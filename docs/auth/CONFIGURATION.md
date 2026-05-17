@@ -659,3 +659,12 @@ If you're still experiencing issues:
 ---
 
 **Need Help?** If you encounter issues not covered in this guide, please [open a GitHub issue](https://github.com/YosefHayim/ebay-mcp/issues) or [start a discussion](https://github.com/YosefHayim/ebay-mcp/discussions).
+
+### Optional: Custom `.env` path
+
+Set `EBAY_ENV_PATH` to force ebay-mcp to read configuration and persist refreshed tokens to a specific dotenv file. If unset, ebay-mcp uses the package root `.env`. Relative `EBAY_ENV_PATH` values are resolved against `process.cwd()`.
+
+```bash
+EBAY_ENV_PATH=/absolute/path/to/.env
+```
+

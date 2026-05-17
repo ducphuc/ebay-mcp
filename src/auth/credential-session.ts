@@ -1,7 +1,5 @@
-import dotenv from 'dotenv';
-import stringify from 'dotenv-stringify';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { getEbayEnvPath } from '@/config/env-path.js';
 import type { EbayConfig, EbayUserToken, StoredTokenData } from '@/types/ebay.js';
 
 /**
@@ -33,22 +31,67 @@ export interface CredentialStore {
 }
 
 /**
- * Credential store that merges token updates into the project .env file.
+ * Credential store that merges token updates into the resolved eBay .env file.
  */
 export class DotEnvCredentialStore implements CredentialStore {
-  constructor(private readonly getEnvPath: () => string = () => join(process.cwd(), '.env')) {}
+  constructor(private readonly getEnvPath: () => string = getEbayEnvPath) {}
 
   write(updates: Record<string, string>): void {
     try {
       const envPath = this.getEnvPath();
-      const existingEnv = existsSync(envPath) ? dotenv.parse(readFileSync(envPath, 'utf-8')) : {};
-      const safeEnvContent = stringify({ ...existingEnv, ...updates });
+      const existingContent = existsSync(envPath) ? readFileSync(envPath, 'utf-8') : '';
+      const safeEnvContent = mergeDotEnvUpdates(existingContent, updates);
 
       writeFileSync(envPath, safeEnvContent, 'utf-8');
     } catch (_error) {
       // Silent failure keeps MCP stdout clean for JSON-RPC clients.
     }
   }
+}
+
+const DOTENV_KEY_PATTERN = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/;
+
+function formatDotEnvValue(value: string): string {
+  if (/^[A-Za-z0-9_./:@%+=,^-]*$/.test(value)) {
+    return value;
+  }
+
+  return JSON.stringify(value);
+}
+
+export function mergeDotEnvUpdates(
+  existingContent: string,
+  updates: Record<string, string>
+): string {
+  const pendingUpdates = new Map(Object.entries(updates));
+  const lineEnding = existingContent.includes('\r\n') ? '\r\n' : '\n';
+  const hadTrailingNewline = existingContent === '' || /\r?\n$/.test(existingContent);
+  const lines = existingContent === '' ? [] : existingContent.replace(/\r?\n$/, '').split(/\r?\n/);
+
+  const mergedLines = lines.map((line) => {
+    const match = DOTENV_KEY_PATTERN.exec(line);
+    const key = match?.[1];
+
+    if (!key || !pendingUpdates.has(key)) {
+      return line;
+    }
+
+    const formattedValue = formatDotEnvValue(pendingUpdates.get(key) ?? '');
+    pendingUpdates.delete(key);
+
+    return `${key}=${formattedValue}`;
+  });
+
+  for (const [key, value] of pendingUpdates) {
+    mergedLines.push(`${key}=${formatDotEnvValue(value)}`);
+  }
+
+  if (mergedLines.length === 0) {
+    return '';
+  }
+
+  const mergedContent = mergedLines.join(lineEnding);
+  return hadTrailingNewline ? `${mergedContent}${lineEnding}` : mergedContent;
 }
 
 /**

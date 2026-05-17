@@ -13,6 +13,7 @@ import {
   DotEnvCredentialStore,
   isTokenExpired,
   maskToken,
+  mergeDotEnvUpdates,
 } from '@/auth/credential-session.js';
 
 describe('credential session', () => {
@@ -44,6 +45,30 @@ describe('credential session', () => {
       EBAY_USER_ACCESS_TOKEN: 'access',
       EBAY_USER_REFRESH_TOKEN: 'refresh',
     });
+  });
+
+  it('merges env updates without rewriting unrelated lines', () => {
+    const existing = [
+      '# Shared OpenClaw secrets',
+      'OPENAI_API_KEY=keep-this',
+      'export EBAY_USER_ACCESS_TOKEN=old-access',
+      'NESTED_VALUE="keep spaces and quotes"',
+      '',
+    ].join('\n');
+
+    const merged = mergeDotEnvUpdates(existing, {
+      EBAY_USER_ACCESS_TOKEN: 'new-access',
+      EBAY_USER_REFRESH_TOKEN: 'new refresh token',
+    });
+
+    expect(merged.split('\n')).toEqual([
+      '# Shared OpenClaw secrets',
+      'OPENAI_API_KEY=keep-this',
+      'EBAY_USER_ACCESS_TOKEN=new-access',
+      'NESTED_VALUE="keep spaces and quotes"',
+      'EBAY_USER_REFRESH_TOKEN="new refresh token"',
+      '',
+    ]);
   });
 
   it('centralizes default token expiry calculations', () => {

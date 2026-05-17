@@ -354,6 +354,7 @@ describe('EbayOAuthClient', () => {
       originalCwd = process.cwd();
       tempDir = mkdtempSync(path.join(tmpdir(), 'ebay-oauth-persistence-'));
       process.chdir(tempDir);
+      process.env.EBAY_ENV_PATH = path.join(tempDir, '.env');
       writeFileSyncMock.mockClear();
     });
 
@@ -363,6 +364,7 @@ describe('EbayOAuthClient', () => {
       writeFileSyncMock.mockClear();
       delete process.env.EBAY_USER_REFRESH_TOKEN;
       delete process.env.EBAY_USER_ACCESS_TOKEN;
+      delete process.env.EBAY_ENV_PATH;
     });
 
     it('exchangeCodeForToken persists both access and refresh tokens to .env (issue #113)', async () => {

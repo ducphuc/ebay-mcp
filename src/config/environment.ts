@@ -2,6 +2,7 @@ import { config } from 'dotenv';
 import { existsSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { getEbayEnvPath } from '@/config/env-path.js';
 import type { EbayConfig } from '@/types/ebay.js';
 import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
 import { LocaleEnum } from '@/types/ebay-enums.js';
@@ -14,7 +15,7 @@ const __dirname = dirname(__filename);
 // Load .env from the package root (two levels up from src/config/), not process.cwd().
 // MCP servers inherit cwd from the host (e.g. Claude Code's project dir), so
 // process.cwd() may point to an unrelated project with a different .env.
-config({ path: join(__dirname, '../../.env'), quiet: true });
+config({ path: getEbayEnvPath(), quiet: true });
 
 // Type for scope JSON structure
 interface ScopeDefinition {
