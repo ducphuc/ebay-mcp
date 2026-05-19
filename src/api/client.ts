@@ -10,6 +10,14 @@ interface AxiosConfigWithRetry extends AxiosRequestConfig {
   __retryCount?: number;
 }
 
+/** Raw eBay API response with headers preserved for endpoints that return IDs in Location. */
+export interface EbayApiRawResponse<T = unknown> {
+  data: T;
+  headers: Record<string, unknown>;
+  status: number;
+  statusText: string;
+}
+
 /**
  * Rate limit tracking
  */
@@ -311,6 +319,38 @@ export class EbayApiClient {
     this.validateAccessToken();
     const response = await this.httpClient.delete<T>(endpoint, config);
     return response.data;
+  }
+
+  /**
+   * Make a request and preserve response headers.
+   *
+   * Some modern REST APIs, including Commerce Media API create operations, return
+   * newly-created resource IDs in the Location response header. The standard
+   * helpers return only response bodies, so callers that need headers should use
+   * this method. Authentication still uses the normal Authorization header via
+   * the shared axios interceptors.
+   */
+  async requestRaw<T = unknown>(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    endpoint: string,
+    data?: unknown,
+    config?: AxiosRequestConfig
+  ): Promise<EbayApiRawResponse<T>> {
+    this.validateAccessToken();
+
+    const response = await this.httpClient.request<T>({
+      url: endpoint,
+      method,
+      data,
+      ...config,
+    });
+
+    return {
+      data: response.data,
+      headers: response.headers as Record<string, unknown>,
+      status: response.status,
+      statusText: response.statusText,
+    };
   }
 
   /**

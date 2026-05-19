@@ -5,6 +5,7 @@ import { communicationHandlers } from './communication.js';
 import { developerHandlers } from './developer.js';
 import { fulfillmentHandlers } from './fulfillment.js';
 import { inventoryHandlers } from './inventory.js';
+import { mediaHandlers } from './media.js';
 import { marketingHandlers } from './marketing.js';
 import { metadataHandlers } from './metadata.js';
 import { otherApiHandlers } from './other.js';
@@ -22,6 +23,7 @@ export const toolHandlers: ToolHandlerMap = {
   ...tokenManagementHandlers,
   ...accountHandlers,
   ...inventoryHandlers,
+  ...mediaHandlers,
   ...fulfillmentHandlers,
   ...marketingHandlers,
   ...analyticsHandlers,

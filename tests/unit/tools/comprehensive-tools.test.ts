@@ -82,6 +82,11 @@ describe('Comprehensive Tools Coverage', () => {
         getListingFees: vi.fn(),
         bulkMigrateListing: vi.fn(),
       },
+      media: {
+        createImageFromFile: vi.fn(),
+        createImageFromUrl: vi.fn(),
+        getImage: vi.fn(),
+      },
       fulfillment: {
         getOrders: vi.fn(),
         getOrder: vi.fn(),
@@ -767,6 +772,42 @@ describe('Comprehensive Tools Coverage', () => {
       expect(mockApi.inventory.bulkMigrateListing).toHaveBeenCalledWith(requests);
     });
   });
+
+  // ===== MEDIA TOOLS =====
+  describe('Media Tools', () => {
+    it('ebay_media_create_image_from_file', async () => {
+      const mockResponse = { imageId: 'IMAGE123' };
+      vi.mocked(mockApi.media.createImageFromFile).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_media_create_image_from_file', {
+        filePath: '/tmp/photo.jpg',
+        fileName: 'photo.jpg',
+        mimeType: 'image/jpeg',
+      });
+      expect(mockApi.media.createImageFromFile).toHaveBeenCalledWith('/tmp/photo.jpg', {
+        fileName: 'photo.jpg',
+        mimeType: 'image/jpeg',
+      });
+    });
+
+    it('ebay_media_create_image_from_url', async () => {
+      const mockResponse = { imageId: 'IMAGE456' };
+      vi.mocked(mockApi.media.createImageFromUrl).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_media_create_image_from_url', {
+        imageUrl: 'https://example.com/photo.png',
+      });
+      expect(mockApi.media.createImageFromUrl).toHaveBeenCalledWith(
+        'https://example.com/photo.png'
+      );
+    });
+
+    it('ebay_media_get_image', async () => {
+      const mockResponse = { imageUrl: 'https://i.ebayimg.com/images/g/example/s-l1600.jpg' };
+      vi.mocked(mockApi.media.getImage).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_media_get_image', { imageId: 'IMAGE789' });
+      expect(mockApi.media.getImage).toHaveBeenCalledWith('IMAGE789');
+    });
+  });
+
 
   // ===== FULFILLMENT TOOLS =====
   describe('Fulfillment Tools', () => {

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   getEbayConfig,
   getBaseUrl,
+  getMediaBaseUrl,
   getAuthUrl,
   validateEnvironmentConfig,
 } from '@/config/environment.js';
@@ -135,6 +136,18 @@ describe('Environment Configuration', () => {
     it('should return sandbox URL for sandbox environment', () => {
       const url = getBaseUrl('sandbox');
       expect(url).toBe('https://api.sandbox.ebay.com');
+    });
+  });
+
+  describe('getMediaBaseUrl', () => {
+    it('should return production apim URL for production environment', () => {
+      const url = getMediaBaseUrl('production');
+      expect(url).toBe('https://apim.ebay.com');
+    });
+
+    it('should return sandbox apim URL for sandbox environment', () => {
+      const url = getMediaBaseUrl('sandbox');
+      expect(url).toBe('https://apim.sandbox.ebay.com');
     });
   });
 

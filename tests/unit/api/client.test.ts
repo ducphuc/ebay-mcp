@@ -65,6 +65,42 @@ describe('EbayApiClient Unit Tests', () => {
     nock.enableNetConnect();
   });
 
+  describe('Raw requests', () => {
+    it('uses the standard Authorization header and preserves response headers', async () => {
+      nock('https://apim.sandbox.ebay.com', {
+        reqheaders: {
+          authorization: 'Bearer mock_access_token',
+        },
+      })
+        .post('/commerce/media/v1_beta/image/create_image_from_url', {
+          imageUrl: 'https://example.com/photo.jpg',
+        })
+        .reply(
+          201,
+          { imageUrl: 'https://i.ebayimg.com/images/g/example/s-l1600.jpg' },
+          {
+            Location: 'https://apim.ebay.com/commerce/media/v1_beta/image/IMAGE-123',
+          }
+        );
+
+      const result = await apiClient.requestRaw(
+        'POST',
+        '/commerce/media/v1_beta/image/create_image_from_url',
+        { imageUrl: 'https://example.com/photo.jpg' },
+        { baseURL: 'https://apim.sandbox.ebay.com' }
+      );
+
+      expect(mockOAuthClient.getAccessToken).toHaveBeenCalled();
+      expect(result.status).toBe(201);
+      expect(result.data).toEqual({
+        imageUrl: 'https://i.ebayimg.com/images/g/example/s-l1600.jpg',
+      });
+      expect(result.headers.location).toBe(
+        'https://apim.ebay.com/commerce/media/v1_beta/image/IMAGE-123'
+      );
+    });
+  });
+
   describe('Rate Limiting', () => {
     it('should track request counts', async () => {
       // Mock a series of successful API calls

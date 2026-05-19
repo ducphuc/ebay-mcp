@@ -227,6 +227,13 @@ export function getBaseUrl(environment: 'production' | 'sandbox'): string {
 }
 
 /**
+ * Get base URL for Commerce Media API image operations (uses apim subdomain).
+ */
+export function getMediaBaseUrl(environment: 'production' | 'sandbox'): string {
+  return environment === 'production' ? 'https://apim.ebay.com' : 'https://apim.sandbox.ebay.com';
+}
+
+/**
  * Get base URL for Identity API (uses apiz subdomain)
  */
 export function getIdentityBaseUrl(environment: 'production' | 'sandbox'): string {

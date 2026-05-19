@@ -14,6 +14,7 @@
 import { tokenManagementTools } from './token-management.js';
 import { accountTools } from './account.js';
 import { inventoryTools } from './inventory.js';
+import { mediaTools } from './media.js';
 import { fulfillmentTools } from './fulfillment.js';
 import { marketingTools } from './marketing.js';
 import { analyticsTools } from './analytics.js';
@@ -29,6 +30,7 @@ export {
   tokenManagementTools,
   accountTools,
   inventoryTools,
+  mediaTools,
   fulfillmentTools,
   marketingTools,
   analyticsTools,
@@ -45,6 +47,7 @@ export const allTools = [
   ...tokenManagementTools,
   ...accountTools,
   ...inventoryTools,
+  ...mediaTools,
   ...fulfillmentTools,
   ...marketingTools,
   ...analyticsTools,
