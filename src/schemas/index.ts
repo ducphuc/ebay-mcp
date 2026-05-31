@@ -15,6 +15,8 @@
  *   getMetadataJsonSchemas,
  *   getAnalyticsJsonSchemas,
  *   getTaxonomyJsonSchemas,
+ *   getLogisticsJsonSchemas,
+ *   getEdeliveryJsonSchemas,
  *   getOtherApisJsonSchemas,
  *   getAllJsonSchemas,
  * } from '@/schemas';
@@ -45,7 +47,13 @@ export * from './analytics/analytics.js';
 // Taxonomy (Categories, Suggestions, Aspects)
 export * from './taxonomy/taxonomy.js';
 
-// Other APIs (Identity, Compliance, VERO, Translation, eDelivery)
+// Logistics
+export * from './logistics/logistics.js';
+
+// eDelivery
+export * from './edelivery/edelivery.js';
+
+// Other APIs (Identity, Compliance, VERO, Translation)
 export * from './other/other-apis.js';
 
 // Re-export commonly used schema converters
@@ -57,6 +65,8 @@ import { getMarketingJsonSchemas } from './marketing/marketing.js';
 import { getMetadataJsonSchemas } from './metadata/metadata.js';
 import { getAnalyticsJsonSchemas } from './analytics/analytics.js';
 import { getTaxonomyJsonSchemas } from './taxonomy/taxonomy.js';
+import { getLogisticsJsonSchemas } from './logistics/logistics.js';
+import { getEdeliveryJsonSchemas } from './edelivery/edelivery.js';
 import { getOtherApisJsonSchemas } from './other/other-apis.js';
 
 /**
@@ -74,6 +84,8 @@ export function getAllJsonSchemas() {
     metadata: getMetadataJsonSchemas(),
     analytics: getAnalyticsJsonSchemas(),
     taxonomy: getTaxonomyJsonSchemas(),
+    logistics: getLogisticsJsonSchemas(),
+    edelivery: getEdeliveryJsonSchemas(),
     otherApis: getOtherApisJsonSchemas(),
   };
 }

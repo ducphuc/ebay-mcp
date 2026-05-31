@@ -186,9 +186,21 @@ describe('Comprehensive Tools Coverage', () => {
       translation: {
         translate: vi.fn(),
       },
-      edelivery: {
+      logistics: {
         createShippingQuote: vi.fn(),
         getShippingQuote: vi.fn(),
+        createFromShippingQuote: vi.fn(),
+        getShipment: vi.fn(),
+        cancelShipment: vi.fn(),
+        downloadLabelFile: vi.fn(),
+      },
+      edelivery: {
+        getActualCosts: vi.fn(),
+        getAddressPreferences: vi.fn(),
+        getShippingServices: vi.fn(),
+        getPackageByOrderLineItem: vi.fn(),
+        createBundle: vi.fn(),
+        createPackage: vi.fn(),
       },
       setUserTokens: vi.fn(),
       getTokenInfo: vi.fn().mockReturnValue({
@@ -1401,21 +1413,128 @@ describe('Comprehensive Tools Coverage', () => {
       ]);
     });
 
-    it('ebay_create_shipping_quote', async () => {
+    it('ebay_logistics_create_shipping_quote', async () => {
       const mockResponse = { quoteId: 'QUOTE123' };
-      const shippingQuoteRequest = { packageDetails: {} };
-      vi.mocked(mockApi.edelivery.createShippingQuote).mockResolvedValue(mockResponse);
-      await executeTool(mockApi, 'ebay_create_shipping_quote', { shippingQuoteRequest });
-      expect(mockApi.edelivery.createShippingQuote).toHaveBeenCalledWith(shippingQuoteRequest);
+      const shippingQuoteRequest = {
+        orders: [{ channel: 'EBAY', orderId: 'ORDER123' }],
+        packageSpecification: {
+          weight: { value: '1', unit: 'POUND' },
+          dimensions: { height: '4', length: '8', width: '6', unit: 'INCH' },
+        },
+        shipFrom: {
+          fullName: 'Sender Example',
+          contactAddress: { countryCode: 'US', postalCode: '94105' },
+        },
+        shipTo: {
+          fullName: 'Buyer Example',
+          contactAddress: { countryCode: 'US', postalCode: '10001' },
+        },
+      };
+      vi.mocked(mockApi.logistics.createShippingQuote).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_logistics_create_shipping_quote', { shippingQuoteRequest });
+      expect(mockApi.logistics.createShippingQuote).toHaveBeenCalledWith(shippingQuoteRequest);
     });
 
-    it('ebay_get_shipping_quote', async () => {
+    it('ebay_logistics_get_shipping_quote', async () => {
       const mockResponse = { quoteId: 'QUOTE123' };
-      vi.mocked(mockApi.edelivery.getShippingQuote).mockResolvedValue(mockResponse);
-      await executeTool(mockApi, 'ebay_get_shipping_quote', {
+      vi.mocked(mockApi.logistics.getShippingQuote).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_logistics_get_shipping_quote', {
         shippingQuoteId: 'QUOTE123',
       });
-      expect(mockApi.edelivery.getShippingQuote).toHaveBeenCalledWith('QUOTE123');
+      expect(mockApi.logistics.getShippingQuote).toHaveBeenCalledWith('QUOTE123');
+    });
+
+    it('ebay_logistics_create_from_shipping_quote', async () => {
+      const mockResponse = { shipmentId: 'SHP123' };
+      const createShipmentFromQuoteRequest = {
+        shippingQuoteId: 'QUOTE123',
+        rateId: 'RATE123',
+        labelSize: '4"x6"',
+      };
+      vi.mocked(mockApi.logistics.createFromShippingQuote).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_logistics_create_from_shipping_quote', {
+        createShipmentFromQuoteRequest,
+      });
+      expect(mockApi.logistics.createFromShippingQuote).toHaveBeenCalledWith(
+        createShipmentFromQuoteRequest
+      );
+    });
+
+    it('ebay_logistics_get_shipment', async () => {
+      const mockResponse = { shipmentId: 'SHP123' };
+      vi.mocked(mockApi.logistics.getShipment).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_logistics_get_shipment', {
+        shipmentId: 'SHP123',
+      });
+      expect(mockApi.logistics.getShipment).toHaveBeenCalledWith('SHP123');
+    });
+
+    it('ebay_logistics_cancel_shipment', async () => {
+      const mockResponse = { shipmentId: 'SHP123', status: 'CANCELLED' };
+      vi.mocked(mockApi.logistics.cancelShipment).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_logistics_cancel_shipment', {
+        shipmentId: 'SHP123',
+      });
+      expect(mockApi.logistics.cancelShipment).toHaveBeenCalledWith('SHP123');
+    });
+
+    it('ebay_logistics_download_label_file', async () => {
+      const bytes = Uint8Array.from([1, 2, 3]);
+      vi.mocked(mockApi.logistics.downloadLabelFile).mockResolvedValue(bytes.buffer);
+
+      const result = (await executeTool(mockApi, 'ebay_logistics_download_label_file', {
+        shipmentId: 'SHP123',
+        accept: 'application/pdf',
+      })) as {
+        shipmentId: string;
+        contentType: string;
+        encoding: string;
+        data: string;
+        sizeBytes: number;
+      };
+
+      expect(mockApi.logistics.downloadLabelFile).toHaveBeenCalledWith('SHP123', 'application/pdf');
+      expect(result).toMatchObject({
+        shipmentId: 'SHP123',
+        contentType: 'application/pdf',
+        encoding: 'base64',
+        data: 'AQID',
+        sizeBytes: 3,
+      });
+    });
+
+    it('ebay_edelivery_get_services', async () => {
+      const mockResponse = { services: [] };
+      vi.mocked(mockApi.edelivery.getShippingServices).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_edelivery_get_services', {
+        params: { country: 'US' },
+      });
+      expect(mockApi.edelivery.getShippingServices).toHaveBeenCalledWith({ country: 'US' });
+    });
+
+    it('ebay_edelivery_get_packages_by_line_item_id', async () => {
+      const mockResponse = { packageId: 'PKG123' };
+      vi.mocked(mockApi.edelivery.getPackageByOrderLineItem).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_edelivery_get_packages_by_line_item_id', {
+        orderLineItemId: 'LINE123',
+      });
+      expect(mockApi.edelivery.getPackageByOrderLineItem).toHaveBeenCalledWith('LINE123');
+    });
+
+    it('ebay_edelivery_create_bundle', async () => {
+      const mockResponse = { bundleId: 'BUNDLE123' };
+      const bundleRequest = { packageIds: ['PKG1', 'PKG2'] };
+      vi.mocked(mockApi.edelivery.createBundle).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_edelivery_create_bundle', { bundleRequest });
+      expect(mockApi.edelivery.createBundle).toHaveBeenCalledWith(bundleRequest);
+    });
+
+    it('ebay_edelivery_create_package', async () => {
+      const mockResponse = { packageId: 'PKG123' };
+      const packageRequest = { orderId: 'ORDER123' };
+      vi.mocked(mockApi.edelivery.createPackage).mockResolvedValue(mockResponse);
+      await executeTool(mockApi, 'ebay_edelivery_create_package', { packageRequest });
+      expect(mockApi.edelivery.createPackage).toHaveBeenCalledWith(packageRequest);
     });
   });
 

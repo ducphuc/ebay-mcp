@@ -56,7 +56,7 @@ const SPEC_FOLDER_MAP: Record<string, string> = {
   'sell_negotiation_v1_oas3.json': 'sell-apps/communication',
   'commerce_feedback_v1_beta_oas3.json': 'sell-apps/communication',
   'sell_fulfillment_v1_oas3.json': 'sell-apps/order-management',
-  'sell_logistics_v1_oas3.json': 'sell-apps/order-management',
+  'sell_logistics_v1_oas3.json': 'sell-apps/logistics',
   'sell_marketing_v1_oas3.json': 'sell-apps/marketing-and-promotions',
   'sell_recommendation_v1_oas3.json': 'sell-apps/marketing-and-promotions',
   'sell_analytics_v1_oas3.json': 'sell-apps/analytics-and-report',
@@ -354,8 +354,8 @@ const KNOWN_OPERATION_MAPPINGS: Record<string, string[]> = {
   updateevidence: ['ebay_update_evidence'],
 
   // Logistics/eDelivery API
-  getpackagesbylineitemid: ['ebay_get_package_by_order_line_item'],
-  getservices: ['ebay_get_shipping_services', 'ebay_get_services'],
+  getpackagesbylineitemid: ['ebay_edelivery_get_packages_by_line_item_id'],
+  getservices: ['ebay_edelivery_get_services'],
 };
 
 /**

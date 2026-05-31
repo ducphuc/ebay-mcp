@@ -9,7 +9,6 @@ import { zodToJsonSchema } from 'zod-to-json-schema';
  * - Sell Compliance API
  * - Commerce Translation API
  * - Commerce VERO API
- * - Sell eDelivery International Shipping API
  */
 
 // ============================================================================
@@ -217,164 +216,6 @@ const veroReportedListingsResponseSchema = z.object({
 });
 
 // ============================================================================
-// Sell eDelivery International Shipping API Schemas
-// ============================================================================
-
-const addressSchema = z.object({
-  addressLine1: z.string().optional(),
-  addressLine2: z.string().optional(),
-  city: z.string().optional(),
-  stateOrProvince: z.string().optional(),
-  postalCode: z.string().optional(),
-  countryCode: z.string().optional(),
-});
-
-const contactSchema = z.object({
-  companyName: z.string().optional(),
-  contactAddress: addressSchema.optional(),
-  email: z.string().optional(),
-  fullName: z.string().optional(),
-  primaryPhone: z
-    .object({
-      phoneNumber: z.string().optional(),
-    })
-    .optional(),
-});
-
-const dimensionsSchema = z.object({
-  height: z.number().optional(),
-  length: z.number().optional(),
-  width: z.number().optional(),
-  unit: z.string().optional(),
-});
-
-const weightSchema = z.object({
-  value: z.number().optional(),
-  unit: z.string().optional(),
-});
-
-const packageDetailsSchema = z.object({
-  dimensions: dimensionsSchema.optional(),
-  weight: weightSchema.optional(),
-});
-
-const lineItemInputSchema = z.object({
-  lineItemId: z.string().optional(),
-  quantity: z.number().int().optional(),
-});
-
-const createShippingQuoteRequestSchema = z.object({
-  orders: z
-    .array(
-      z.object({
-        lineItems: z.array(lineItemInputSchema).optional(),
-        orderId: z.string().optional(),
-      })
-    )
-    .optional(),
-  shippingDestination: contactSchema.optional(),
-});
-
-const rateSchema = z.object({
-  maxEstimatedDeliveryDate: z.string().optional(),
-  minEstimatedDeliveryDate: z.string().optional(),
-  rateId: z.string().optional(),
-  shippingCost: amountSchema.optional(),
-  shippingServiceCode: z.string().optional(),
-  shippingServiceName: z.string().optional(),
-});
-
-const packageSchema = z.object({
-  lineItems: z
-    .array(
-      z.object({
-        itemId: z.string().optional(),
-        lineItemId: z.string().optional(),
-        orderId: z.string().optional(),
-        quantity: z.number().int().optional(),
-      })
-    )
-    .optional(),
-  packageDetails: packageDetailsSchema.optional(),
-  packageId: z.string().optional(),
-  rates: z.array(rateSchema).optional(),
-});
-
-const shippingQuoteSchema = z.object({
-  creationDate: z.string().optional(),
-  expirationDate: z.string().optional(),
-  packages: z.array(packageSchema).optional(),
-  quoteId: z.string().optional(),
-  shippingDestination: contactSchema.optional(),
-  warnings: z.array(errorSchema).optional(),
-});
-
-const createShippingQuoteResponseSchema = z.object({
-  shippingQuote: shippingQuoteSchema.optional(),
-});
-
-const purchaseLabelRequestSchema = z.object({
-  labelFormat: z.string().optional(),
-  rateId: z.string(),
-  shipFromAddress: contactSchema.optional(),
-});
-
-const labelSchema = z.object({
-  labelData: z.string().optional(),
-  labelFormat: z.string().optional(),
-  labelId: z.string().optional(),
-});
-
-const purchasedRateSchema = z.object({
-  baseShippingCost: amountSchema.optional(),
-  destinationTimeZone: z.string().optional(),
-  maxEstimatedDeliveryDate: z.string().optional(),
-  minEstimatedDeliveryDate: z.string().optional(),
-  rateId: z.string().optional(),
-  shippingCost: amountSchema.optional(),
-  shippingServiceCode: z.string().optional(),
-  shippingServiceName: z.string().optional(),
-});
-
-const shipmentSchema = z.object({
-  creationDate: z.string().optional(),
-  labels: z.array(labelSchema).optional(),
-  packages: z
-    .array(
-      z.object({
-        packageId: z.string().optional(),
-        trackingNumber: z.string().optional(),
-      })
-    )
-    .optional(),
-  rate: purchasedRateSchema.optional(),
-  shipFromAddress: contactSchema.optional(),
-  shipmentId: z.string().optional(),
-  shipmentTrackingNumber: z.string().optional(),
-  shippingDestination: contactSchema.optional(),
-});
-
-const purchaseLabelResponseSchema = z.object({
-  shipment: shipmentSchema.optional(),
-  warnings: z.array(errorSchema).optional(),
-});
-
-const getShipmentResponseSchema = z.object({
-  shipment: shipmentSchema.optional(),
-});
-
-const cancelShipmentResponseSchema = z.object({
-  shipment: shipmentSchema.optional(),
-  warnings: z.array(errorSchema).optional(),
-});
-
-const downloadLabelResponseSchema = z.object({
-  labelData: z.string().optional(),
-  labelFormat: z.string().optional(),
-  warnings: z.array(errorSchema).optional(),
-});
-
-// ============================================================================
 // Input Schemas for Operations
 // ============================================================================
 
@@ -437,29 +278,10 @@ export function getOtherApisJsonSchemas() {
       'getVeroReportedListingsOutput'
     ),
 
-    // Sell eDelivery International Shipping API
-    createShippingQuoteInput: zodToJsonSchema(
-      createShippingQuoteRequestSchema,
-      'createShippingQuoteInput'
-    ),
-    createShippingQuoteOutput: zodToJsonSchema(
-      createShippingQuoteResponseSchema,
-      'createShippingQuoteOutput'
-    ),
-    purchaseLabelInput: zodToJsonSchema(purchaseLabelRequestSchema, 'purchaseLabelInput'),
-    purchaseLabelOutput: zodToJsonSchema(purchaseLabelResponseSchema, 'purchaseLabelOutput'),
-    getShipmentOutput: zodToJsonSchema(getShipmentResponseSchema, 'getShipmentOutput'),
-    cancelShipmentOutput: zodToJsonSchema(cancelShipmentResponseSchema, 'cancelShipmentOutput'),
-    downloadLabelOutput: zodToJsonSchema(downloadLabelResponseSchema, 'downloadLabelOutput'),
-
     // Common Types
     error: zodToJsonSchema(errorSchema, 'error'),
     errorParameter: zodToJsonSchema(errorParameterSchema, 'errorParameter'),
     amount: zodToJsonSchema(amountSchema, 'amount'),
-    address: zodToJsonSchema(addressSchema, 'address'),
-    contact: zodToJsonSchema(contactSchema, 'contact'),
-    dimensions: zodToJsonSchema(dimensionsSchema, 'dimensions'),
-    weight: zodToJsonSchema(weightSchema, 'weight'),
     pageMetadata: zodToJsonSchema(pageMetadataSchema, 'pageMetadata'),
 
     // Compliance Types
@@ -480,13 +302,6 @@ export function getOtherApisJsonSchemas() {
     reportedListingDetails: zodToJsonSchema(reportedListingDetailsSchema, 'reportedListingDetails'),
     itemLocation: zodToJsonSchema(itemLocationSchema, 'itemLocation'),
 
-    // eDelivery International Shipping Types
-    shippingQuote: zodToJsonSchema(shippingQuoteSchema, 'shippingQuote'),
-    shipment: zodToJsonSchema(shipmentSchema, 'shipment'),
-    package: zodToJsonSchema(packageSchema, 'package'),
-    rate: zodToJsonSchema(rateSchema, 'rate'),
-    label: zodToJsonSchema(labelSchema, 'label'),
-    packageDetails: zodToJsonSchema(packageDetailsSchema, 'packageDetails'),
     userConsent: zodToJsonSchema(userConsentSchema, 'userConsent'),
   };
 }

@@ -3629,12 +3629,12 @@ export const otherApiTools: ToolDefinition[] = [
     },
   },
   {
-    name: 'ebay_create_shipping_quote',
-    description: 'Create a shipping quote for international shipping',
+    name: 'ebay_logistics_create_shipping_quote',
+    description: 'Create a USPS shipping quote (Logistics API v1_beta)',
     inputSchema: {
       shippingQuoteRequest: shippingQuoteRequestSchema.describe('Shipping quote request details'),
     },
-    title: 'Create Shipping Quote',
+    title: 'Logistics Create Shipping Quote',
     outputSchema: {
       type: 'object',
       properties: {
@@ -3643,7 +3643,7 @@ export const otherApiTools: ToolDefinition[] = [
       },
     },
     annotations: {
-      title: 'Create Shipping Quote',
+      title: 'Logistics Create Shipping Quote',
       idempotentHint: true,
     },
     _meta: {
@@ -3652,12 +3652,12 @@ export const otherApiTools: ToolDefinition[] = [
     },
   },
   {
-    name: 'ebay_get_shipping_quote',
-    description: 'Get a shipping quote by ID',
+    name: 'ebay_logistics_get_shipping_quote',
+    description: 'Get a Logistics shipping quote by ID',
     inputSchema: {
       shippingQuoteId: z.string().describe('The shipping quote ID'),
     },
-    title: 'Get Shipping Quote',
+    title: 'Logistics Get Shipping Quote',
     outputSchema: {
       type: 'object',
       properties: {
@@ -3666,7 +3666,7 @@ export const otherApiTools: ToolDefinition[] = [
       },
     },
     annotations: {
-      title: 'Get Shipping Quote',
+      title: 'Logistics Get Shipping Quote',
       readOnlyHint: true,
     },
     _meta: {

@@ -2,26 +2,12 @@ import type { EbayApiClient } from '../client.js';
 
 /**
  * eDelivery API - International shipping eDelivery
- * Based on: docs/sell-apps/other-apis/sell_edelivery_international_shipping_oas3.json
+ * Based on: docs/sell-apps/sell_edelivery_international_shipping_oas3.yaml
  */
 export class EDeliveryApi {
-  private readonly basePath = '/sell/logistics/v1';
+  private readonly basePath = '/sell/edelivery_international_shipping/v1';
 
   constructor(private client: EbayApiClient) {}
-
-  /**
-   * Create shipping quote
-   */
-  async createShippingQuote(shippingQuoteRequest: Record<string, unknown>) {
-    return await this.client.post(`${this.basePath}/shipping_quote`, shippingQuoteRequest);
-  }
-
-  /**
-   * Get shipping quote
-   */
-  async getShippingQuote(shippingQuoteId: string) {
-    return await this.client.get(`${this.basePath}/shipping_quote/${shippingQuoteId}`);
-  }
 
   // ==================== Cost & Preferences ====================
 

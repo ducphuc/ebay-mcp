@@ -53,7 +53,7 @@ const getFolderName = (specUrl: string): string => {
 
     // Selling Apps - Order Management
     'sell_fulfillment_v1_oas3.json': 'sell-apps/order-management',
-    'sell_logistics_v1_oas3.json': 'sell-apps/order-management',
+    'sell_logistics_v1_oas3.json': 'sell-apps/logistics',
 
     // Selling Apps - Marketing & Promotions
     'sell_marketing_v1_oas3.json': 'sell-apps/marketing-and-promotions',

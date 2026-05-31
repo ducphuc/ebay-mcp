@@ -203,9 +203,17 @@ describe('Tools Layer', () => {
       translation: {
         translate: vi.fn(),
       },
-      edelivery: {
+      logistics: {
         createShippingQuote: vi.fn(),
         getShippingQuote: vi.fn(),
+        createFromShippingQuote: vi.fn(),
+        getShipment: vi.fn(),
+        cancelShipment: vi.fn(),
+        downloadLabelFile: vi.fn(),
+      },
+      edelivery: {
+        getActualCosts: vi.fn(),
+        getAddressPreferences: vi.fn(),
       },
       // Token management methods
       setUserTokens: vi.fn(),
@@ -260,6 +268,13 @@ describe('Tools Layer', () => {
       expect(toolNames).toContain('ebay_get_category_tree'); // taxonomyTools
       expect(toolNames).toContain('ebay_send_message'); // communicationTools
       expect(toolNames).toContain('ebay_get_user'); // otherApiTools
+      expect(toolNames).toContain('ebay_logistics_create_shipping_quote'); // logistics canonical tool
+      expect(toolNames).toContain('ebay_edelivery_get_services'); // eDelivery canonical tool
+
+      // Legacy aliases were removed as part of shipping API split cleanup
+      expect(toolNames).not.toContain('ebay_create_shipping_quote');
+      expect(toolNames).not.toContain('ebay_get_shipping_quote');
+      expect(toolNames).not.toContain('ebay_get_package_by_order_line_item');
     });
   });
 

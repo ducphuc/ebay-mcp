@@ -665,14 +665,187 @@ export const veroReportDataSchema = z
 /** Shipping quote request payload for estimated shipping rates. */
 export const shippingQuoteRequestSchema = z
   .object({
-    packageDetails: z
+    orders: z
+      .array(
+        z
+          .object({
+            channel: z.string().optional(),
+            orderId: z.string().optional(),
+          })
+          .passthrough()
+      )
+      .optional(),
+    packageSpecification: z
       .object({
+        dimensions: z
+          .object({
+            height: z.string().optional(),
+            length: z.string().optional(),
+            width: z.string().optional(),
+            unit: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
         weight: z
           .object({
-            value: z.number(),
-            unit: z.string(),
+            value: z.string().optional(),
+            unit: z.string().optional(),
           })
-          .passthrough(),
+          .passthrough()
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
+    shipFrom: z
+      .object({
+        companyName: z.string().optional(),
+        fullName: z.string().optional(),
+        primaryPhone: z
+          .object({
+            phoneNumber: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+        contactAddress: z
+          .object({
+            addressLine1: z.string().optional(),
+            addressLine2: z.string().optional(),
+            city: z.string().optional(),
+            county: z.string().optional(),
+            stateOrProvince: z.string().optional(),
+            postalCode: z.string().optional(),
+            countryCode: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
+    shipTo: z
+      .object({
+        companyName: z.string().optional(),
+        fullName: z.string().optional(),
+        primaryPhone: z
+          .object({
+            phoneNumber: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+        contactAddress: z
+          .object({
+            addressLine1: z.string().optional(),
+            addressLine2: z.string().optional(),
+            city: z.string().optional(),
+            county: z.string().optional(),
+            stateOrProvince: z.string().optional(),
+            postalCode: z.string().optional(),
+            countryCode: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+/** Logistics create-from-quote request payload used to purchase a label. */
+export const logisticsCreateShipmentFromQuoteRequestSchema = z
+  .object({
+    shippingQuoteId: z.string(),
+    rateId: z.string(),
+    labelSize: z.string().optional(),
+    labelCustomMessage: z.string().optional(),
+    additionalOptions: z
+      .array(
+        z
+          .object({
+            optionType: z.string(),
+            additionalCost: amountSchema.optional(),
+          })
+          .passthrough()
+      )
+      .optional(),
+    returnTo: z
+      .object({
+        companyName: z.string().optional(),
+        fullName: z.string().optional(),
+        contactAddress: z
+          .object({
+            addressLine1: z.string().optional(),
+            addressLine2: z.string().optional(),
+            city: z.string().optional(),
+            county: z.string().optional(),
+            stateOrProvince: z.string().optional(),
+            postalCode: z.string().optional(),
+            countryCode: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+        primaryPhone: z
+          .object({
+            phoneNumber: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+/** eDelivery address preference payload for create/update operations. */
+export const edeliveryAddressPreferenceSchema = z
+  .object({
+    address: z
+      .object({
+        addressLine1: z.string().optional(),
+        addressLine2: z.string().optional(),
+        city: z.string().optional(),
+        stateOrProvince: z.string().optional(),
+        postalCode: z.string().optional(),
+        countryCode: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+    contact: z
+      .object({
+        fullName: z.string().optional(),
+        companyName: z.string().optional(),
+        email: z.string().optional(),
+        phoneNumber: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+/** eDelivery consign preference payload for create/update operations. */
+export const edeliveryConsignPreferenceSchema = z
+  .object({
+    consignmentType: z.string().optional(),
+    pickupType: z.string().optional(),
+    preferences: z.record(z.unknown()).optional(),
+  })
+  .passthrough();
+
+/** eDelivery package create payload. */
+export const edeliveryPackageRequestSchema = z
+  .object({
+    orderId: z.string().optional(),
+    orderLineItemId: z.string().optional(),
+    lineItems: z
+      .array(
+        z
+          .object({
+            lineItemId: z.string().optional(),
+            quantity: z.number().int().optional(),
+          })
+          .passthrough()
+      )
+      .optional(),
+    packageDetails: z
+      .object({
         dimensions: z
           .object({
             height: z.number().optional(),
@@ -682,26 +855,32 @@ export const shippingQuoteRequestSchema = z
           })
           .passthrough()
           .optional(),
+        weight: z
+          .object({
+            value: z.number().optional(),
+            unit: z.string().optional(),
+          })
+          .passthrough()
+          .optional(),
       })
-      .passthrough(),
-    shipFrom: z
-      .object({
-        addressLine1: z.string().optional(),
-        city: z.string().optional(),
-        stateOrProvince: z.string().optional(),
-        postalCode: z.string().optional(),
-        country: z.string(),
-      })
-      .passthrough(),
-    shipTo: z
-      .object({
-        addressLine1: z.string().optional(),
-        city: z.string().optional(),
-        stateOrProvince: z.string().optional(),
-        postalCode: z.string().optional(),
-        country: z.string(),
-      })
-      .passthrough(),
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+/** eDelivery bundle create payload. */
+export const edeliveryBundleRequestSchema = z
+  .object({
+    packageIds: z.array(z.string()).optional(),
+    packages: z.array(z.string()).optional(),
+  })
+  .passthrough();
+
+/** eDelivery bulk package action payload shared by cancel/confirm/delete. */
+export const edeliveryBulkPackageActionRequestSchema = z
+  .object({
+    packageIds: z.array(z.string()).optional(),
+    requests: z.array(z.record(z.unknown())).optional(),
   })
   .passthrough();
 

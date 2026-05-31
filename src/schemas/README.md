@@ -22,7 +22,11 @@ src/schemas/
 │   └── analytics.ts
 ├── taxonomy/             # Categories, suggestions, aspects
 │   └── taxonomy.ts
-├── other/                # Identity, compliance, VERO, translation, eDelivery
+├── logistics/            # Shipping quotes, shipments, labels
+│   └── logistics.ts
+├── edelivery/            # International shipping packages, bundles, services
+│   └── edelivery.ts
+├── other/                # Identity, compliance, VERO, translation
 │   └── other-apis.ts
 ├── index.ts              # Central export point
 └── README.md             # This file
@@ -52,6 +56,8 @@ import {
   getMetadataJsonSchemas,
   getAnalyticsJsonSchemas,
   getTaxonomyJsonSchemas,
+  getLogisticsJsonSchemas,
+  getEdeliveryJsonSchemas,
   getOtherApisJsonSchemas,
   getAllJsonSchemas, // Gets all schemas at once
 } from '@/schemas';
@@ -66,6 +72,8 @@ const outputSchema = accountSchemas.getFulfillmentPoliciesOutput;
 // Or get all schemas at once
 const allSchemas = getAllJsonSchemas();
 const marketingCampaignSchema = allSchemas.marketing.createCampaignInput;
+const logisticsQuoteSchema = allSchemas.logistics.createShippingQuoteInput;
+const edeliveryPackageSchema = allSchemas.edelivery.createPackageInput;
 ```
 
 ### Using Zod Schemas for Validation
@@ -254,17 +262,55 @@ Schemas for category navigation, suggestions, and product aspects.
 - `getCategorySuggestionsInputSchema` / `getCategorySuggestionsOutputSchema`
 - `getItemAspectsForCategoryOutputSchema`
 
-### 9. Other APIs (`other/other-apis.ts`)
+### 9. Logistics (`logistics/logistics.ts`)
 
-Schemas for identity, compliance, VERO, translation, and international shipping.
+Schemas for Sell Logistics shipping quotes, shipment purchase, shipment retrieval, cancellation, and label download.
 
-**Endpoints Covered (40 total):**
+**Endpoints Covered (6 total):**
+
+- Create shipping quote
+- Get shipping quote
+- Create shipment from quote
+- Get shipment
+- Cancel shipment
+- Download label file
+
+**Key Schemas:**
+
+- `createShippingQuoteInputSchema` / `createShippingQuoteOutputSchema`
+- `getShippingQuoteOutputSchema`
+- `createFromShippingQuoteInputSchema` / `createFromShippingQuoteOutputSchema`
+- `getShipmentOutputSchema` / `cancelShipmentOutputSchema`
+
+### 10. eDelivery (`edelivery/edelivery.ts`)
+
+Schemas for Sell eDelivery International Shipping packages, bundles, service metadata, preferences, labels, tracking, and related package operations.
+
+**Endpoints Covered:**
+
+- Package operations (create, get, delete, cancel, clone, confirm, get by line item)
+- Bulk package operations (cancel, confirm, delete)
+- Bundle operations (create, get, cancel, get label)
+- Services, costs, preferences, agents, dropoff sites, labels, handover sheets, tracking, and complaints
+
+**Key Schemas:**
+
+- `createPackageInputSchema` / `createPackageOutputSchema`
+- `getPackageOutputSchema`
+- `bulkCancelPackagesInputSchema` / `bulkCancelPackagesOutputSchema`
+- `createBundleInputSchema` / `createBundleOutputSchema`
+- `getServicesInputSchema` / `getServicesOutputSchema`
+
+### 11. Other APIs (`other/other-apis.ts`)
+
+Schemas for identity, compliance, VERO, and translation.
+
+**Endpoints Covered:**
 
 - Commerce Identity API (user information)
 - Sell Compliance API (listing violations, suppression)
 - Commerce VERO API (intellectual property rights reporting)
 - Commerce Translation API (content translation)
-- Sell eDelivery International Shipping API (shipping quotes, packages, labels, tracking)
 
 **Key Schemas:**
 
@@ -272,7 +318,6 @@ Schemas for identity, compliance, VERO, translation, and international shipping.
 - `getListingViolationsOutputSchema`
 - `createVeroReportInputSchema` / `createVeroReportOutputSchema`
 - `translateInputSchema` / `translateOutputSchema`
-- `createShippingQuoteInputSchema` / `createShippingQuoteOutputSchema`
 
 ## 🔧 Schema Naming Convention
 
@@ -379,7 +424,9 @@ All eBay API endpoints now have comprehensive Zod schemas!
 - [x] **Metadata** - 23 endpoints ✅
 - [x] **Analytics** - 4 endpoints ✅
 - [x] **Taxonomy** - 4 endpoints ✅
-- [x] **Other APIs** - 40 endpoints ✅
+- [x] **Logistics** - 6 endpoints ✅
+- [x] **eDelivery** - 27 endpoints ✅
+- [x] **Other APIs** - 7 endpoints ✅
 
 **Total: 220 eBay API endpoints with full input/output schemas**
 

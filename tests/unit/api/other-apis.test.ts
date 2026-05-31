@@ -6,6 +6,7 @@ import { ComplianceApi } from '../../../src/api/other/compliance.js';
 import { VeroApi } from '../../../src/api/other/vero.js';
 import { TranslationApi } from '../../../src/api/other/translation.js';
 import { EDeliveryApi } from '../../../src/api/other/edelivery.js';
+import { LogisticsApi } from '../../../src/api/logistics/logistics.js';
 import { IdentityApi } from '../../../src/api/other/identity.js';
 import type { EbayApiClient } from '../../../src/api/client.js';
 
@@ -348,27 +349,38 @@ describe('Other APIs', () => {
     });
   });
 
-  describe('EDeliveryApi', () => {
-    let api: EDeliveryApi;
+  describe('LogisticsApi', () => {
+    let api: LogisticsApi;
 
     beforeEach(() => {
-      api = new EDeliveryApi(client);
+      api = new LogisticsApi(client);
     });
 
     it('should create shipping quote', async () => {
       const mockResponse = { quoteId: 'QUOTE123' };
       const shippingQuoteRequest = {
-        packageDetails: { weight: { value: 1, unit: 'kg' } },
-        shipFrom: { country: 'US' },
-        shipTo: { country: 'CA' },
+        orders: [{ channel: 'EBAY', orderId: 'ORDER123' }],
+        packageSpecification: {
+          weight: { value: '1', unit: 'POUND' },
+          dimensions: { height: '4', length: '8', width: '6', unit: 'INCH' },
+        },
+        shipFrom: {
+          fullName: 'Sender Example',
+          contactAddress: { countryCode: 'US', postalCode: '94105' },
+        },
+        shipTo: {
+          fullName: 'Buyer Example',
+          contactAddress: { countryCode: 'US', postalCode: '10001' },
+        },
       };
       vi.mocked(client.post).mockResolvedValue(mockResponse);
 
       await api.createShippingQuote(shippingQuoteRequest);
 
       expect(client.post).toHaveBeenCalledWith(
-        '/sell/logistics/v1/shipping_quote',
-        shippingQuoteRequest
+        '/sell/logistics/v1_beta/shipping_quote',
+        shippingQuoteRequest,
+        undefined
       );
     });
 
@@ -378,7 +390,68 @@ describe('Other APIs', () => {
 
       await api.getShippingQuote('QUOTE123');
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/shipping_quote/QUOTE123');
+      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1_beta/shipping_quote/QUOTE123');
+    });
+
+    it('should create shipment from shipping quote', async () => {
+      const mockResponse = { shipmentId: 'SHP123' };
+      const createShipmentFromQuoteRequest = {
+        shippingQuoteId: 'QUOTE123',
+        rateId: 'RATE123',
+        labelSize: '4"x6"',
+      };
+      vi.mocked(client.post).mockResolvedValue(mockResponse);
+
+      await api.createFromShippingQuote(createShipmentFromQuoteRequest);
+
+      expect(client.post).toHaveBeenCalledWith(
+        '/sell/logistics/v1_beta/shipment/create_from_shipping_quote',
+        createShipmentFromQuoteRequest,
+        undefined
+      );
+    });
+
+    it('should get shipment', async () => {
+      const mockResponse = { shipmentId: 'SHP123' };
+      vi.mocked(client.get).mockResolvedValue(mockResponse);
+
+      await api.getShipment('SHP123');
+
+      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1_beta/shipment/SHP123');
+    });
+
+    it('should cancel shipment', async () => {
+      vi.mocked(client.post).mockResolvedValue(undefined);
+
+      await api.cancelShipment('SHP123');
+
+      expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1_beta/shipment/SHP123/cancel', {});
+    });
+
+    it('should download label file as binary', async () => {
+      const mockLabel = new ArrayBuffer(10);
+      vi.mocked(client.get).mockResolvedValue(mockLabel);
+
+      await api.downloadLabelFile('SHP123', 'application/pdf');
+
+      expect(client.get).toHaveBeenCalledWith(
+        '/sell/logistics/v1_beta/shipment/SHP123/download_label_file',
+        undefined,
+        {
+          headers: {
+            Accept: 'application/pdf',
+          },
+          responseType: 'arraybuffer',
+        }
+      );
+    });
+  });
+
+  describe('EDeliveryApi', () => {
+    let api: EDeliveryApi;
+
+    beforeEach(() => {
+      api = new EDeliveryApi(client);
     });
 
     // Cost & Preferences
@@ -388,7 +461,7 @@ describe('Other APIs', () => {
 
       await api.getActualCosts({ package_id: 'PKG123' });
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/actual_costs', {
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/actual_costs', {
         package_id: 'PKG123',
       });
     });
@@ -399,7 +472,7 @@ describe('Other APIs', () => {
 
       await api.getAddressPreferences();
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/address_preference');
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/address_preference');
     });
 
     it('should create address preference', async () => {
@@ -410,7 +483,7 @@ describe('Other APIs', () => {
       await api.createAddressPreference(addressData);
 
       expect(client.post).toHaveBeenCalledWith(
-        '/sell/logistics/v1/address_preference',
+        '/sell/edelivery_international_shipping/v1/address_preference',
         addressData
       );
     });
@@ -421,7 +494,7 @@ describe('Other APIs', () => {
 
       await api.getConsignPreferences();
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/consign_preference');
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/consign_preference');
     });
 
     it('should create consign preference', async () => {
@@ -432,7 +505,7 @@ describe('Other APIs', () => {
       await api.createConsignPreference(consignData);
 
       expect(client.post).toHaveBeenCalledWith(
-        '/sell/logistics/v1/consign_preference',
+        '/sell/edelivery_international_shipping/v1/consign_preference',
         consignData
       );
     });
@@ -444,7 +517,7 @@ describe('Other APIs', () => {
 
       await api.getAgents({ country: 'US' });
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/agents', { country: 'US' });
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/agents', { country: 'US' });
     });
 
     it('should get battery qualifications', async () => {
@@ -453,7 +526,7 @@ describe('Other APIs', () => {
 
       await api.getBatteryQualifications({ battery_type: 'LITHIUM_ION' });
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/battery_qualifications', {
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/battery_qualifications', {
         battery_type: 'LITHIUM_ION',
       });
     });
@@ -464,7 +537,7 @@ describe('Other APIs', () => {
 
       await api.getDropoffSites({ postal_code: '10001', country: 'US' });
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/dropoff_sites', {
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/dropoff_sites', {
         postal_code: '10001',
         country: 'US',
       });
@@ -476,7 +549,7 @@ describe('Other APIs', () => {
 
       await api.getShippingServices({ country: 'US' });
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/services', { country: 'US' });
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/services', { country: 'US' });
     });
 
     // Bundles
@@ -487,7 +560,7 @@ describe('Other APIs', () => {
 
       await api.createBundle(bundleData);
 
-      expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1/bundle', bundleData);
+      expect(client.post).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/bundle', bundleData);
     });
 
     it('should get bundle', async () => {
@@ -496,7 +569,7 @@ describe('Other APIs', () => {
 
       await api.getBundle('BUNDLE123');
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/bundle/BUNDLE123');
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/bundle/BUNDLE123');
     });
 
     it('should cancel bundle', async () => {
@@ -504,7 +577,7 @@ describe('Other APIs', () => {
 
       await api.cancelBundle('BUNDLE123');
 
-      expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1/bundle/BUNDLE123/cancel', {});
+      expect(client.post).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/bundle/BUNDLE123/cancel', {});
     });
 
     it('should get bundle label', async () => {
@@ -513,7 +586,7 @@ describe('Other APIs', () => {
 
       await api.getBundleLabel('BUNDLE123');
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/bundle/BUNDLE123/label');
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/bundle/BUNDLE123/label');
     });
 
     // Packages (Single)
@@ -524,7 +597,7 @@ describe('Other APIs', () => {
 
       await api.createPackage(packageData);
 
-      expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1/package', packageData);
+      expect(client.post).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/package', packageData);
     });
 
     it('should get package', async () => {
@@ -533,7 +606,7 @@ describe('Other APIs', () => {
 
       await api.getPackage('PKG123');
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/package/PKG123');
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/package/PKG123');
     });
 
     it('should delete package', async () => {
@@ -541,7 +614,7 @@ describe('Other APIs', () => {
 
       await api.deletePackage('PKG123');
 
-      expect(client.delete).toHaveBeenCalledWith('/sell/logistics/v1/package/PKG123');
+      expect(client.delete).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/package/PKG123');
     });
 
     it('should get package by order line item', async () => {
@@ -550,7 +623,7 @@ describe('Other APIs', () => {
 
       await api.getPackageByOrderLineItem('ORDER_LINE_123');
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/package/ORDER_LINE_123/item');
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/package/ORDER_LINE_123/item');
     });
 
     it('should cancel package', async () => {
@@ -558,7 +631,7 @@ describe('Other APIs', () => {
 
       await api.cancelPackage('PKG123');
 
-      expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1/package/PKG123/cancel', {});
+      expect(client.post).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/package/PKG123/cancel', {});
     });
 
     it('should clone package', async () => {
@@ -567,7 +640,7 @@ describe('Other APIs', () => {
 
       await api.clonePackage('PKG123');
 
-      expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1/package/PKG123/clone', {});
+      expect(client.post).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/package/PKG123/clone', {});
     });
 
     it('should confirm package', async () => {
@@ -575,7 +648,7 @@ describe('Other APIs', () => {
 
       await api.confirmPackage('PKG123');
 
-      expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1/package/PKG123/confirm', {});
+      expect(client.post).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/package/PKG123/confirm', {});
     });
 
     // Packages (Bulk)
@@ -587,7 +660,7 @@ describe('Other APIs', () => {
       await api.bulkCancelPackages(bulkData);
 
       expect(client.post).toHaveBeenCalledWith(
-        '/sell/logistics/v1/package/bulk_cancel_packages',
+        '/sell/edelivery_international_shipping/v1/package/bulk_cancel_packages',
         bulkData
       );
     });
@@ -600,7 +673,7 @@ describe('Other APIs', () => {
       await api.bulkConfirmPackages(bulkData);
 
       expect(client.post).toHaveBeenCalledWith(
-        '/sell/logistics/v1/package/bulk_confirm_packages',
+        '/sell/edelivery_international_shipping/v1/package/bulk_confirm_packages',
         bulkData
       );
     });
@@ -613,7 +686,7 @@ describe('Other APIs', () => {
       await api.bulkDeletePackages(bulkData);
 
       expect(client.post).toHaveBeenCalledWith(
-        '/sell/logistics/v1/package/bulk_delete_packages',
+        '/sell/edelivery_international_shipping/v1/package/bulk_delete_packages',
         bulkData
       );
     });
@@ -625,7 +698,7 @@ describe('Other APIs', () => {
 
       await api.getLabels({ package_id: 'PKG123' });
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/labels', {
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/labels', {
         package_id: 'PKG123',
       });
     });
@@ -636,7 +709,7 @@ describe('Other APIs', () => {
 
       await api.getHandoverSheet({ bundle_id: 'BUNDLE123' });
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/handover_sheet', {
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/handover_sheet', {
         bundle_id: 'BUNDLE123',
       });
     });
@@ -647,7 +720,7 @@ describe('Other APIs', () => {
 
       await api.getTracking({ tracking_number: 'TRACK123' });
 
-      expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1/tracking', {
+      expect(client.get).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/tracking', {
         tracking_number: 'TRACK123',
       });
     });
@@ -660,7 +733,7 @@ describe('Other APIs', () => {
 
       await api.createComplaint(complaintData);
 
-      expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1/complaint', complaintData);
+      expect(client.post).toHaveBeenCalledWith('/sell/edelivery_international_shipping/v1/complaint', complaintData);
     });
   });
 
