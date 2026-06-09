@@ -73,14 +73,40 @@ function getSandboxScopes(): string[] {
 }
 
 /**
- * Get default scopes for the specified environment
+ * Get all known scopes for the specified environment.
  */
-export function getDefaultScopes(environment: 'production' | 'sandbox'): string[] {
+export function getAvailableScopes(environment: 'production' | 'sandbox'): string[] {
   if (environment === 'production') {
     return getProductionScopes();
   }
 
   return getSandboxScopes();
+}
+
+/**
+ * Drop readonly scopes when the corresponding view-and-manage scope is present.
+ *
+ * eBay documents these as redundant pairs: requesting `sell.inventory` already
+ * covers the read access represented by `sell.inventory.readonly`.
+ */
+export function pruneRedundantReadonlyScopes(scopes: string[]): string[] {
+  const scopeSet = new Set(scopes);
+
+  return scopes.filter((scope) => {
+    if (!scope.endsWith('.readonly')) {
+      return true;
+    }
+
+    const writeScope = scope.slice(0, -'.readonly'.length);
+    return !scopeSet.has(writeScope);
+  });
+}
+
+/**
+ * Get default scopes requested for the specified environment.
+ */
+export function getDefaultScopes(environment: 'production' | 'sandbox'): string[] {
+  return pruneRedundantReadonlyScopes(getAvailableScopes(environment));
 }
 
 /**
@@ -90,7 +116,7 @@ export function validateScopes(
   scopes: string[],
   environment: 'production' | 'sandbox'
 ): { warnings: string[]; validScopes: string[] } {
-  const validScopes = getDefaultScopes(environment);
+  const validScopes = getAvailableScopes(environment);
   const validScopeSet = new Set(validScopes);
   const warnings: string[] = [];
   const requestedValidScopes: string[] = [];
@@ -101,7 +127,7 @@ export function validateScopes(
     } else {
       // Check if this is a scope for the other environment
       const otherEnvironment = environment === 'production' ? 'sandbox' : 'production';
-      const otherScopes = getDefaultScopes(otherEnvironment);
+      const otherScopes = getAvailableScopes(otherEnvironment);
 
       if (otherScopes.includes(scope)) {
         warnings.push(

@@ -2,7 +2,7 @@
  * Utility functions for working with eBay OAuth scopes
  */
 
-import { getDefaultScopes, validateScopes } from '@/config/environment.js';
+import { getAvailableScopes, getDefaultScopes, validateScopes } from '@/config/environment.js';
 
 /**
  * Result of scope validation
@@ -41,7 +41,7 @@ export function validateScopesDetailed(
   environment: 'production' | 'sandbox'
 ): ScopeValidationResult {
   const validation = validateScopes(scopes, environment);
-  const validScopeSet = new Set(getDefaultScopes(environment));
+  const validScopeSet = new Set(getAvailableScopes(environment));
 
   const validScopes: string[] = [];
   const invalidScopes: string[] = [];

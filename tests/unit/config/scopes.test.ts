@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
+  getAvailableScopes,
   getDefaultScopes,
+  pruneRedundantReadonlyScopes,
   validateScopes,
   getOAuthAuthorizationUrl,
 } from '../../../src/config/environment.js';
@@ -42,6 +44,56 @@ describe('Scope Validation', () => {
         expect(productionScopes).toContain(scope);
         expect(sandboxScopes).toContain(scope);
       });
+    });
+
+    it('should omit readonly scopes when matching write scopes are requested by default', () => {
+      const productionScopes = getDefaultScopes('production');
+      const sandboxScopes = getDefaultScopes('sandbox');
+
+      const redundantReadonlyScopes = [
+        'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.account.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.marketing.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.reputation.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.stores.readonly',
+        'https://api.ebay.com/oauth/api_scope/commerce.notification.subscription.readonly',
+        'https://api.ebay.com/oauth/api_scope/commerce.feedback.readonly',
+      ];
+
+      redundantReadonlyScopes.forEach((scope) => {
+        expect(productionScopes).not.toContain(scope);
+      });
+
+      redundantReadonlyScopes
+        .filter((scope) => getAvailableScopes('sandbox').includes(scope))
+        .forEach((scope) => {
+          expect(sandboxScopes).not.toContain(scope);
+        });
+    });
+
+    it('should retain readonly scopes that have no requested write equivalent', () => {
+      const productionScopes = getDefaultScopes('production');
+
+      expect(productionScopes).toContain(
+        'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly'
+      );
+      expect(productionScopes).toContain(
+        'https://api.ebay.com/oauth/api_scope/commerce.identity.readonly'
+      );
+    });
+
+    it('should prune only readonly scopes whose write scope is also present', () => {
+      const scopes = [
+        'https://api.ebay.com/oauth/api_scope/sell.marketing.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.marketing',
+        'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
+      ];
+
+      expect(pruneRedundantReadonlyScopes(scopes)).toEqual([
+        'https://api.ebay.com/oauth/api_scope/sell.marketing',
+        'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
+      ]);
     });
 
     it('should not include sandbox-only scopes in production', () => {
@@ -123,6 +175,18 @@ describe('Scope Validation', () => {
 
       expect(result.warnings.length).toBe(0);
       expect(result.validScopes).toEqual(commonScopes);
+    });
+
+    it('should allow explicit readonly scopes even when defaults omit redundant readonly scopes', () => {
+      const readonlyScopes = [
+        'https://api.ebay.com/oauth/api_scope/sell.marketing.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly',
+      ];
+
+      const result = validateScopes(readonlyScopes, 'production');
+
+      expect(result.warnings).toHaveLength(0);
+      expect(result.validScopes).toEqual(readonlyScopes);
     });
 
     it('should warn for unrecognized scopes', () => {
@@ -210,6 +274,8 @@ describe('Scope Validation', () => {
       const scope = parsed.searchParams.get('scope');
       expect(scope).toBeTruthy();
       expect(scope).toContain('sell.inventory');
+      expect(scope).not.toContain('sell.inventory.readonly');
+      expect(scope).not.toContain('sell.marketing.readonly');
     });
 
     it('should include custom scopes when provided', () => {
