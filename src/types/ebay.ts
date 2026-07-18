@@ -178,7 +178,7 @@ export enum EbayApi {
   VERO = 'commerce/vero/v1',
   COMPLIANCE = 'sell/compliance/v1',
   TRANSLATION = 'commerce/translation/v1',
-  EDELIVERY = 'sell/logistics/v1',
+  EDELIVERY = 'sell/edelivery_international_shipping/v1',
 }
 
 /**
