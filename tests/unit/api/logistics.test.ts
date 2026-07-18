@@ -11,39 +11,85 @@ describe('LogisticsApi', () => {
   beforeEach(() => {
     client = {
       get: vi.fn(),
+      getConfig: vi.fn(() => ({ marketplaceId: 'EBAY_US' })),
       post: vi.fn(),
     } as unknown as EbayApiClient;
     api = new LogisticsApi(client);
   });
+
+  const shippingQuoteRequest = {
+    orders: [{ orderId: 'ORDER-1' }],
+    packageSpecification: {
+      dimensions: { height: '1', length: '2', width: '3', unit: 'INCH' as const },
+      weight: { value: '4', unit: 'OUNCE' as const },
+    },
+    shipFrom: {
+      fullName: 'Seller',
+      contactAddress: {
+        addressLine1: '1 Main St',
+        city: 'Phoenix',
+        stateOrProvince: 'AZ',
+        postalCode: '85001',
+        countryCode: 'US' as const,
+      },
+    },
+    shipTo: {
+      fullName: 'Buyer',
+      contactAddress: {
+        addressLine1: '2 Main St',
+        city: 'Tempe',
+        stateOrProvince: 'AZ',
+        postalCode: '85281',
+        countryCode: 'US' as const,
+      },
+    },
+  };
 
   it('creates a shipping quote with a marketplace header override', async () => {
     vi.mocked(client.post).mockResolvedValue({ shippingQuoteId: 'QUOTE-1' });
 
     const result = await Effect.runPromise(
       api.createShippingQuote({
-        shippingQuoteRequest: { orders: [{ orderId: 'ORDER-1' }] },
+        shippingQuoteRequest,
         marketplaceId: 'EBAY_US',
       }),
     );
 
     expect(client.post).toHaveBeenCalledWith(
       '/sell/logistics/v1_beta/shipping_quote',
-      { orders: [{ orderId: 'ORDER-1' }] },
-      { headers: { 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' } },
+      shippingQuoteRequest,
+      {
+        headers: { 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+        retryServerErrors: false,
+      },
     );
     expect(result).toEqual({ shippingQuoteId: 'QUOTE-1' });
   });
 
-  it('creates a shipping quote without a marketplace header when omitted', async () => {
+  it('falls back to the configured marketplace header when omitted', async () => {
     vi.mocked(client.post).mockResolvedValue({ shippingQuoteId: 'QUOTE-1' });
 
-    await Effect.runPromise(
-      api.createShippingQuote({ shippingQuoteRequest: { orders: [{ orderId: 'ORDER-1' }] } }),
+    await Effect.runPromise(api.createShippingQuote({ shippingQuoteRequest }));
+
+    expect(client.post).toHaveBeenCalledWith(
+      '/sell/logistics/v1_beta/shipping_quote',
+      shippingQuoteRequest,
+      {
+        headers: { 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+        retryServerErrors: false,
+      },
+    );
+  });
+
+  it('fails locally when no marketplace ID is available', async () => {
+    vi.mocked(client.getConfig).mockReturnValue({} as ReturnType<EbayApiClient['getConfig']>);
+
+    const result = await Effect.runPromise(
+      Effect.either(api.createShippingQuote({ shippingQuoteRequest })),
     );
 
-    expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1_beta/shipping_quote', {
-      orders: [{ orderId: 'ORDER-1' }],
-    });
+    expect(result._tag).toBe('Left');
+    expect(client.post).not.toHaveBeenCalled();
   });
 
   it('fails with a tagged input error when the quote request body is missing', async () => {
@@ -61,9 +107,9 @@ describe('LogisticsApi', () => {
   it('gets a shipping quote by ID', async () => {
     vi.mocked(client.get).mockResolvedValue({ shippingQuoteId: 'QUOTE-1' });
 
-    const result = await Effect.runPromise(api.getShippingQuote({ shippingQuoteId: 'QUOTE-1' }));
+    const result = await Effect.runPromise(api.getShippingQuote({ shippingQuoteId: 'QUOTE/1' }));
 
-    expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1_beta/shipping_quote/QUOTE-1');
+    expect(client.get).toHaveBeenCalledWith('/sell/logistics/v1_beta/shipping_quote/QUOTE%2F1');
     expect(result).toEqual({ shippingQuoteId: 'QUOTE-1' });
   });
 
@@ -73,12 +119,17 @@ describe('LogisticsApi', () => {
     const result = await Effect.runPromise(
       api.createFromShippingQuote({
         createShipmentFromQuoteRequest: { shippingQuoteId: 'QUOTE-1', rateId: 'RATE-1' },
+        marketplaceId: 'EBAY_US',
       }),
     );
 
     expect(client.post).toHaveBeenCalledWith(
       '/sell/logistics/v1_beta/shipment/create_from_shipping_quote',
       { shippingQuoteId: 'QUOTE-1', rateId: 'RATE-1' },
+      {
+        headers: { 'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US' },
+        retryServerErrors: false,
+      },
     );
     expect(result).toEqual({ shipmentId: 'SHIP-1' });
   });
@@ -86,9 +137,13 @@ describe('LogisticsApi', () => {
   it('cancels a shipment by ID', async () => {
     vi.mocked(client.post).mockResolvedValue({ shipmentId: 'SHIP-1' });
 
-    await Effect.runPromise(api.cancelShipment({ shipmentId: 'SHIP-1' }));
+    await Effect.runPromise(api.cancelShipment({ shipmentId: 'SHIP/1' }));
 
-    expect(client.post).toHaveBeenCalledWith('/sell/logistics/v1_beta/shipment/SHIP-1/cancel', {});
+    expect(client.post).toHaveBeenCalledWith(
+      '/sell/logistics/v1_beta/shipment/SHIP%2F1/cancel',
+      {},
+      { retryServerErrors: false },
+    );
   });
 
   it('downloads a label file as a base64 payload', async () => {
@@ -114,21 +169,17 @@ describe('LogisticsApi', () => {
     });
   });
 
-  it('requests the PNG label variant when accept is provided', async () => {
-    vi.mocked(client.get).mockResolvedValue(Buffer.from('png-bytes'));
-
+  it('rejects the removed PNG label variant before calling eBay', async () => {
     const result = await Effect.runPromise(
-      api.downloadLabelFile({ shipmentId: 'SHIP-1', accept: 'image/png' }),
+      Effect.either(
+        api.downloadLabelFile({
+          shipmentId: 'SHIP-1',
+          accept: 'image/png',
+        } as Parameters<typeof api.downloadLabelFile>[0]),
+      ),
     );
 
-    expect(client.get).toHaveBeenCalledWith(
-      '/sell/logistics/v1_beta/shipment/SHIP-1/download_label_file',
-      undefined,
-      {
-        headers: { Accept: 'image/png' },
-        responseType: 'arraybuffer',
-      },
-    );
-    expect(result.contentType).toBe('image/png');
+    expect(result._tag).toBe('Left');
+    expect(client.get).not.toHaveBeenCalled();
   });
 });

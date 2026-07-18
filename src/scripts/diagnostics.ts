@@ -11,12 +11,20 @@ import { writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { runSecurityChecks, displaySecurityResults } from '@/utils/securityChecker.js';
+import { getEbayEnvPathForProject } from '@/config/envPath.js';
 import { validateSetup, displayRecommendations } from '@/utils/setupValidator.js';
 import { parseEnvFile } from '@/utils/envParser.js';
 import { detectLLMClients } from '@/utils/llmClientDetector.js';
-import { displayScopeVerification, parseScopeString } from '@/utils/scopeHelper.js';
+import { displayScopeVerification } from '@/utils/scopeHelper.js';
 import { readEnvironment } from './setupShared.js';
 import { EbaySellerApi } from '@/api/index.js';
+import type { OAuthTokenScopeInfo } from '@/auth/oauth.js';
+import { LOGISTICS_OAUTH_SCOPE } from '@/config/logistics.js';
+import {
+  areLogisticsToolsExposed,
+  buildDiagnosticTokenSummary,
+  type DiagnosticTokenSummary,
+} from './diagnosticTokenInfo.js';
 import { getErrorMessage } from '@/utils/errors.js';
 import { getUpdateInfo, getVersion } from '@/utils/version.js';
 import type { EbayConfig } from '@/types/ebay.js';
@@ -41,12 +49,36 @@ interface DiagnosticReport {
     canReachEbay: boolean;
     error?: string;
   };
-  tokenInfo?: {
-    hasUserToken: boolean;
-    hasAppToken: boolean;
-    scopes?: string[];
-  };
+  tokenInfo?: DiagnosticTokenSummary;
 }
+
+const createDiagnosticConfig = (envVars: Record<string, string>): EbayConfig => ({
+  clientId: envVars.EBAY_CLIENT_ID,
+  clientSecret: envVars.EBAY_CLIENT_SECRET,
+  redirectUri: envVars.EBAY_REDIRECT_URI,
+  environment: readEnvironment(envVars.EBAY_ENVIRONMENT),
+  marketplaceId: envVars.EBAY_MARKETPLACE_ID,
+  contentLanguage: envVars.EBAY_CONTENT_LANGUAGE,
+  refreshToken: envVars.EBAY_USER_REFRESH_TOKEN,
+  accessToken: envVars.EBAY_USER_ACCESS_TOKEN,
+  appAccessToken: envVars.EBAY_APP_ACCESS_TOKEN,
+});
+
+const readInitializedScopeInfo = async (
+  config: EbayConfig,
+): Promise<OAuthTokenScopeInfo | undefined> => {
+  const tokenInfo = await Effect.runPromise(
+    Effect.either(
+      Effect.gen(function* () {
+        const api = new EbaySellerApi(config);
+        yield* api.initialize();
+        return api.getAuthClient().getTokenInfo();
+      }),
+    ),
+  );
+
+  return Either.isRight(tokenInfo) ? tokenInfo.right.scopeInfo : undefined;
+};
 
 /**
  * Check API connectivity
@@ -255,7 +287,7 @@ async function displayAuthenticationTest(config: EbayConfig): Promise<void> {
  * Generate diagnostic report
  */
 async function generateDiagnosticReport(exportPath?: string): Promise<DiagnosticReport> {
-  const envPath = join(PROJECT_ROOT, '.env');
+  const envPath = getEbayEnvPathForProject(PROJECT_ROOT);
   const envVars = parseEnvFile(envPath);
 
   // Run security checks
@@ -285,25 +317,10 @@ async function generateDiagnosticReport(exportPath?: string): Promise<Diagnostic
 
   // If we have credentials, test authentication
   if (envVars.EBAY_CLIENT_ID && envVars.EBAY_CLIENT_SECRET) {
-    const config: EbayConfig = {
-      clientId: envVars.EBAY_CLIENT_ID,
-      clientSecret: envVars.EBAY_CLIENT_SECRET,
-      redirectUri: envVars.EBAY_REDIRECT_URI,
-      environment: readEnvironment(envVars.EBAY_ENVIRONMENT),
-    };
+    const config = createDiagnosticConfig(envVars);
+    const scopeInfo = await readInitializedScopeInfo(config);
 
-    const authResult = await testEbayAuthentication(config);
-
-    report.tokenInfo = {
-      hasUserToken: !!envVars.EBAY_USER_REFRESH_TOKEN,
-      hasAppToken: !!envVars.EBAY_APP_ACCESS_TOKEN,
-    };
-
-    if (authResult.success) {
-      report.tokenInfo.scopes = envVars.EBAY_USER_REFRESH_TOKEN
-        ? parseScopeString(envVars.EBAY_USER_REFRESH_TOKEN)
-        : [];
-    }
+    report.tokenInfo = buildDiagnosticTokenSummary({ ...envVars, ...process.env }, scopeInfo);
   }
 
   // Export report if path provided
@@ -328,7 +345,7 @@ async function runDiagnostics(exportReport = false): Promise<void> {
   displaySecurityResults(securityResults);
 
   // Configuration status
-  const envPath = join(PROJECT_ROOT, '.env');
+  const envPath = getEbayEnvPathForProject(PROJECT_ROOT);
   const envVars = parseEnvFile(envPath);
   displayConfigurationStatus(envVars);
 
@@ -353,32 +370,29 @@ async function runDiagnostics(exportReport = false): Promise<void> {
 
   // If we have credentials, test authentication
   if (envVars.EBAY_CLIENT_ID && envVars.EBAY_CLIENT_SECRET) {
-    const config: EbayConfig = {
-      clientId: envVars.EBAY_CLIENT_ID,
-      clientSecret: envVars.EBAY_CLIENT_SECRET,
-      redirectUri: envVars.EBAY_REDIRECT_URI,
-      environment: readEnvironment(envVars.EBAY_ENVIRONMENT),
-    };
+    const config = createDiagnosticConfig(envVars);
 
     await displayAuthenticationTest(config);
 
     // Scope verification if user has refresh token
     if (envVars.EBAY_USER_REFRESH_TOKEN) {
-      const tokenScopes = await Effect.runPromise(
-        Effect.either(
-          Effect.gen(function* () {
-            const api = new EbaySellerApi(config);
-            yield* api.initialize();
-            const authClient = api.getAuthClient();
-            return authClient.getTokenInfo().scopeInfo;
-          }),
-        ),
-      );
+      const scopeInfo = await readInitializedScopeInfo(config);
 
-      if (Either.isLeft(tokenScopes)) {
+      if (!scopeInfo) {
         console.log(chalk.yellow('⚠️  Could not verify token scopes\n'));
-      } else if (tokenScopes.right) {
-        displayScopeVerification(tokenScopes.right.tokenScopes, config.environment);
+      } else {
+        displayScopeVerification(scopeInfo.tokenScopes, config.environment);
+        if (
+          areLogisticsToolsExposed(process.env) &&
+          !scopeInfo.tokenScopes.includes(LOGISTICS_OAUTH_SCOPE)
+        ) {
+          console.log(
+            chalk.yellow(
+              '  ⚠ Logistics tools are exposed, but the token lacks sell.logistics permission.\n' +
+                '    Re-run setup with --logistics after eBay approves the app for Limited Release.\n',
+            ),
+          );
+        }
       }
     }
   }

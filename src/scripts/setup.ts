@@ -15,7 +15,13 @@ import { fileURLToPath } from 'url';
 import { getOAuthAuthorizationUrl } from '@/config/environment.js';
 import { startCallbackServer } from '@/utils/oauthHelper.js';
 import { defineWizard, runWizard } from '@/utils/setupWizard.js';
-import { loadExistingConfig, quoteEnvValue } from './setupShared.js';
+import {
+  createSetupRefreshGrantBody,
+  getSetupAuthorizationScopes,
+  loadExistingConfig,
+  quoteEnvValue,
+} from './setupShared.js';
+import { getEbayEnvPathForProject } from '@/config/envPath.js';
 import { runSkillsWizard } from './skills.js';
 import prompts from 'prompts';
 import { configureLLMClient, detectLLMClients } from '@/utils/llmClientDetector.js';
@@ -25,13 +31,13 @@ import { getErrorMessage } from '@/utils/errors.js';
 import type { EbayTokenCore } from '@/types/ebay.js';
 import process from 'node:process';
 
-config({ quiet: true });
-
 checkForUpdates();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = join(__dirname, '../..');
+
+config({ path: getEbayEnvPathForProject(PROJECT_ROOT), quiet: true });
 
 const MARKETPLACE_OPTIONS: { value: string; label: string }[] = [
   { value: 'EBAY_US', label: 'EBAY_US — United States' },
@@ -230,12 +236,7 @@ async function verifyRefreshToken(
   const tokenResponse = await httpRequest<OAuthTokenResponse>({
     method: 'POST',
     url: `${baseUrl}/identity/v1/oauth2/token`,
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      scope:
-        'https://api.ebay.com/oauth/api_scope https://api.ebay.com/oauth/api_scope/sell.inventory',
-    }),
+    body: createSetupRefreshGrantBody(refreshToken),
     headers: {
       Authorization: `Basic ${credentials}`,
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -393,7 +394,7 @@ function formatDate(date: Date): string {
 }
 
 function saveConfig(envConfig: Record<string, string>, environment: string): void {
-  const envPath = join(PROJECT_ROOT, '.env');
+  const envPath = getEbayEnvPathForProject(PROJECT_ROOT);
   const marketplaceLine = envConfig.EBAY_MARKETPLACE_ID
     ? `EBAY_MARKETPLACE_ID=${quoteEnvValue(envConfig.EBAY_MARKETPLACE_ID)}`
     : '# EBAY_MARKETPLACE_ID=EBAY_US';
@@ -739,6 +740,18 @@ export const runSetup = async (): Promise<void> => {
         validate: [{ rule: 'required' }],
       },
       {
+        id: 'logistics-oauth',
+        type: 'select',
+        message: 'Request the restricted Logistics OAuth permission?',
+        description:
+          'Choose Yes only after eBay approves this app for the Logistics Limited Release.',
+        options: [
+          { value: 'no', label: 'No — keep the standard OAuth scopes (recommended)' },
+          { value: 'yes', label: 'Yes — request sell.logistics permission' },
+        ],
+        default: args.logistics ? 'yes' : 'no',
+      },
+      {
         id: 'oauth-method',
         type: 'select',
         message: 'Set up OAuth for higher API rate limits:',
@@ -837,6 +850,10 @@ export const runSetup = async (): Promise<void> => {
       const clientSecret =
         (a['client-secret'] as string) || existingConfig.EBAY_CLIENT_SECRET || '';
       const redirectUri = (a['redirect-uri'] as string) || existingConfig.EBAY_REDIRECT_URI || '';
+      const oauthScopes = getSetupAuthorizationScopes(
+        environment,
+        args.logistics || a['logistics-oauth'] === 'yes',
+      );
 
       if (stepId === 'environment' && args.quick) {
         showInfo('Quick setup enabled — skipping optional marketplace configuration.');
@@ -940,7 +957,7 @@ export const runSetup = async (): Promise<void> => {
               clientId,
               redirectUri,
               environment,
-              undefined,
+              oauthScopes,
               state,
             );
             let server: Server | undefined;
@@ -1030,7 +1047,12 @@ export const runSetup = async (): Promise<void> => {
             break;
           }
           case 'manual': {
-            const authUrl = getOAuthAuthorizationUrl(clientId, redirectUri, environment);
+            const authUrl = getOAuthAuthorizationUrl(
+              clientId,
+              redirectUri,
+              environment,
+              oauthScopes,
+            );
             context.showNote('OAuth Authorization URL', authUrl);
             await context.openBrowser(authUrl);
             showInfo('1. Sign in to your eBay account in the browser');
@@ -1240,12 +1262,13 @@ export const runSetup = async (): Promise<void> => {
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
-const parseArgs = (): { help: boolean; quick: boolean; diagnose: boolean } => {
+const parseArgs = (): { help: boolean; quick: boolean; diagnose: boolean; logistics: boolean } => {
   const args = process.argv.slice(2);
   return {
     help: args.includes('--help') || args.includes('-h'),
     quick: args.includes('--quick') || args.includes('-q'),
     diagnose: args.includes('--diagnose') || args.includes('-d'),
+    logistics: args.includes('--logistics'),
   };
 };
 
@@ -1260,11 +1283,13 @@ ${chalk.bold('Options:')}
   --help, -h       Show this help message
   --quick, -q      Quick setup (skip optional configuration)
   --diagnose, -d   Run diagnostics only
+  --logistics      Request restricted sell.logistics OAuth permission
 
 ${chalk.bold('Examples:')}
   npm run setup              Full interactive wizard
   npm run setup --quick      Skip optional configuration
   npm run setup --diagnose   Check system health
+  npm run setup -- --logistics  Opt in to the Logistics OAuth scope
 `);
 };
 

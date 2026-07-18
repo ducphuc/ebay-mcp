@@ -198,9 +198,13 @@ export const logRequest = (
   params?: Record<string, unknown>,
   body?: unknown,
 ): void => {
+  if (!logger.isLevelEnabled('http')) {
+    return;
+  }
+
   apiLogger.http(`Request: ${method.toUpperCase()} ${url}`, {
     params: params && Object.keys(params).length > 0 ? params : undefined,
-    body: body ? truncateData(body) : undefined,
+    body: body ? summarizeLogData(body) : undefined,
   });
 };
 
@@ -226,6 +230,10 @@ export const logResponse = (
   rateLimitRemaining?: string,
   rateLimitTotal?: string,
 ): void => {
+  if (!logger.isLevelEnabled('http')) {
+    return;
+  }
+
   const meta: Record<string, unknown> = {};
 
   if (rateLimitRemaining && rateLimitTotal) {
@@ -233,7 +241,7 @@ export const logResponse = (
   }
 
   if (data) {
-    meta.data = truncateData(data);
+    meta.data = summarizeLogData(data);
   }
 
   apiLogger.http(`Response: ${status} ${statusText}`, meta);
@@ -259,23 +267,90 @@ export const logErrorResponse = (
   url: string,
   errorData?: unknown,
 ): void => {
+  if (!logger.isLevelEnabled('error')) {
+    return;
+  }
+
   const statusLabel = status === undefined ? 'No status' : String(status);
   const statusTextLabel = statusText ?? 'No response';
   apiLogger.error(`Error Response: ${statusLabel} ${statusTextLabel}`, {
     url,
-    error: errorData ? truncateData(errorData) : undefined,
+    error: errorData ? summarizeLogData(errorData) : undefined,
   });
 };
 
 /**
- * Truncate large data objects for logging
+ * Convert data to a bounded, JSON-safe log representation without exposing binary bytes.
  */
-const truncateData = (data: unknown, maxLength = 1000): unknown => {
-  const str = JSON.stringify(data);
-  if (str.length <= maxLength) {
-    return data;
+export const summarizeLogData = (data: unknown, maxLength = 1000): unknown => {
+  const seen = new WeakSet<object>();
+  const limit = Math.max(64, maxLength);
+
+  const visit = (value: unknown, depth: number): unknown => {
+    if (Buffer.isBuffer(value)) {
+      return { type: 'Buffer', byteLength: value.byteLength };
+    }
+    if (value instanceof ArrayBuffer) {
+      return { type: 'ArrayBuffer', byteLength: value.byteLength };
+    }
+    if (ArrayBuffer.isView(value)) {
+      return { type: value.constructor.name, byteLength: value.byteLength };
+    }
+    if (typeof value === 'string') {
+      return value.length > limit ? `${value.slice(0, limit)}... [truncated]` : value;
+    }
+    if (typeof value === 'bigint') {
+      return `${value.toString()}n`;
+    }
+    if (typeof value === 'symbol' || typeof value === 'function') {
+      return String(value);
+    }
+    if (value === null || typeof value !== 'object') {
+      return value;
+    }
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? 'Invalid Date' : value.toISOString();
+    }
+    if (value instanceof Error) {
+      return { name: value.name, message: visit(value.message, depth + 1) };
+    }
+    if (seen.has(value)) {
+      return '[Circular]';
+    }
+    if (depth >= 6) {
+      return '[Max depth]';
+    }
+
+    seen.add(value);
+    if (Array.isArray(value)) {
+      const items = value.slice(0, 50).map((item) => visit(item, depth + 1));
+      if (value.length > 50) items.push(`[${value.length - 50} more items]`);
+      return items;
+    }
+
+    const entries = Object.entries(Object.getOwnPropertyDescriptors(value));
+    const summarized = Object.fromEntries(
+      entries
+        .slice(0, 50)
+        .map(([key, descriptor]) => [
+          key,
+          'value' in descriptor ? visit(descriptor.value, depth + 1) : '[Accessor omitted]',
+        ]),
+    );
+    if (entries.length > 50) summarized['[truncatedKeys]'] = entries.length - 50;
+    return summarized;
+  };
+
+  try {
+    const summarized = visit(data, 0);
+    const str = JSON.stringify(summarized);
+    if (str === undefined || str.length <= limit) {
+      return summarized;
+    }
+    return `${str.substring(0, limit)}... [truncated]`;
+  } catch (error) {
+    return `[Unserializable log data: ${error instanceof Error ? error.name : 'unknown error'}]`;
   }
-  return `${str.substring(0, maxLength)}... [truncated]`;
 };
 
 /**

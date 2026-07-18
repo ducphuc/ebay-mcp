@@ -4,7 +4,13 @@ import { RateLimitTracker } from '@/api/rateLimitTracker.js';
 import { getBaseUrl } from '@/config/environment.js';
 import type { EbayConfig } from '@/types/ebay.js';
 import { getErrorMessage } from '@/utils/errors.js';
-import { httpRequestEffect, isHttpError, type ResponseType, type HttpResponse, type HttpError } from '@/utils/http.js';
+import {
+  httpRequestEffect,
+  isHttpError,
+  type ResponseType,
+  type HttpResponse,
+  type HttpError,
+} from '@/utils/http.js';
 import { isRecord } from '@/utils/typeGuards.js';
 import { apiLogger, logRequest, logResponse, logErrorResponse } from '@/utils/logger.js';
 import { Effect } from 'effect';
@@ -24,6 +30,8 @@ export interface EbayRequestConfig {
   responseType?: ResponseType;
   /** Base URL to use instead of the client's configured REST API base URL. */
   baseURL?: string;
+  /** Whether 5xx responses may be retried automatically. Defaults to true. */
+  retryServerErrors?: boolean;
 }
 
 /** Normalized request options used by the client transport Effect. */
@@ -40,6 +48,8 @@ interface EbayRequestOptions {
   readonly absolute?: boolean;
   /** Base URL to use instead of the client's configured REST API base URL. */
   readonly baseURL?: string;
+  /** Whether 5xx responses may be retried automatically. */
+  readonly retryServerErrors?: boolean;
 }
 
 /** Retry counters carried between recursive request attempts. */
@@ -184,6 +194,7 @@ export class EbayApiClient {
           params: config?.params,
           headers: config?.headers,
           responseType: config?.responseType,
+          retryServerErrors: config?.retryServerErrors,
         },
         {
           authRetried: false,
@@ -219,7 +230,7 @@ export class EbayApiClient {
     state: RequestRetryState,
   ): Effect.Effect<T, EbayClientRequestError> {
     return this.sendWithRetryRaw<T>(method, url, options, state).pipe(
-      Effect.map((response) => response.data)
+      Effect.map((response) => response.data),
     );
   }
 
@@ -419,7 +430,12 @@ export class EbayApiClient {
     }
 
     // 5xx — retry up to three times with exponential backoff.
-    if (error.status != null && error.status >= 500 && state.serverRetries < 3) {
+    if (
+      options.retryServerErrors !== false &&
+      error.status != null &&
+      error.status >= 500 &&
+      state.serverRetries < 3
+    ) {
       const delay = 2 ** state.serverRetries * 1000;
       const delayMs = Math.min(delay, 5000);
       const nextServerRetries = state.serverRetries + 1;
@@ -475,6 +491,7 @@ export class EbayApiClient {
       headers: config?.headers,
       responseType: config?.responseType,
       baseURL: config?.baseURL,
+      retryServerErrors: config?.retryServerErrors,
     });
   }
 
@@ -492,6 +509,7 @@ export class EbayApiClient {
       headers: config?.headers,
       responseType: config?.responseType,
       baseURL: config?.baseURL,
+      retryServerErrors: config?.retryServerErrors,
     });
   }
 
@@ -505,6 +523,7 @@ export class EbayApiClient {
       headers: config?.headers,
       responseType: config?.responseType,
       baseURL: config?.baseURL,
+      retryServerErrors: config?.retryServerErrors,
     });
   }
 
@@ -517,6 +536,7 @@ export class EbayApiClient {
       headers: config?.headers,
       responseType: config?.responseType,
       baseURL: config?.baseURL,
+      retryServerErrors: config?.retryServerErrors,
     });
   }
 

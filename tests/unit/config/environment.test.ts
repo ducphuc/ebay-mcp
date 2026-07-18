@@ -5,8 +5,11 @@ import {
   getIdentityBaseUrl,
   getMediaBaseUrl,
   getProxyAuthConfig,
+  getDefaultScopes,
+  validateScopes,
   validateEnvironmentConfig,
 } from '@/config/environment.js';
+import { LOGISTICS_OAUTH_SCOPE } from '@/config/logistics.js';
 import process from 'node:process';
 
 describe('Environment Configuration', () => {
@@ -245,6 +248,27 @@ describe('Environment Configuration', () => {
 
       expect(result.isValid).toBe(false);
       expect(result.errors.some((e) => e.includes('EBAY_MCP_API_BASE_URL'))).toBe(true);
+    });
+
+    it('requires EBAY_MCP_MEDIA_ROOT to be absolute when configured', () => {
+      process.env.EBAY_CLIENT_ID = 'test_id';
+      process.env.EBAY_CLIENT_SECRET = 'test_secret';
+      process.env.EBAY_MCP_MEDIA_ROOT = 'relative/images';
+
+      const result = validateEnvironmentConfig();
+
+      expect(result.isValid).toBe(false);
+      expect(result.errors.some((error) => error.includes('EBAY_MCP_MEDIA_ROOT'))).toBe(true);
+    });
+  });
+
+  describe('restricted Logistics OAuth scope', () => {
+    it('recognizes sell.logistics without adding it to default scopes', () => {
+      expect(getDefaultScopes('production')).not.toContain(LOGISTICS_OAUTH_SCOPE);
+      expect(validateScopes([LOGISTICS_OAUTH_SCOPE], 'production')).toEqual({
+        warnings: [],
+        validScopes: [LOGISTICS_OAUTH_SCOPE],
+      });
     });
   });
 

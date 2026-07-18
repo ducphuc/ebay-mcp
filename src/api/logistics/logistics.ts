@@ -1,7 +1,7 @@
 import type { EbayApiClient, EbayRequestConfig } from '@/api/client.js';
 import {
   type EbayApiError,
-  type EndpointInputError,
+  EndpointInputError,
   optionalStringEffect,
   requestGetEffect,
   requestPostEffect,
@@ -55,7 +55,7 @@ export interface DownloadedLabelFile {
   /** Shipment the label belongs to. */
   readonly shipmentId: string;
   /** Mime type the label was requested as. */
-  readonly contentType: string;
+  readonly contentType: 'application/pdf';
   /** Encoding of `data`; always base64. */
   readonly encoding: 'base64';
   /** Base64-encoded label file bytes. */
@@ -64,11 +64,45 @@ export interface DownloadedLabelFile {
   readonly sizeBytes: number;
 }
 
-/** Builds the per-request marketplace header override when a marketplace ID is provided. */
-const marketplaceHeaderConfig = (marketplaceId: string | undefined): EbayRequestConfig | undefined =>
-  marketplaceId === undefined
-    ? undefined
-    : { headers: { 'X-EBAY-C-MARKETPLACE-ID': marketplaceId } };
+/** Resolve the required marketplace header from an override or client configuration. */
+const marketplaceHeaderConfig = (
+  client: EbayApiClient,
+  marketplaceId: string | undefined,
+): Effect.Effect<EbayRequestConfig, EndpointInputError> => {
+  const resolvedMarketplaceId = (marketplaceId ?? client.getConfig().marketplaceId)?.trim();
+  if (!resolvedMarketplaceId) {
+    return Effect.fail(
+      new EndpointInputError({
+        parameter: 'marketplaceId',
+        message:
+          'marketplaceId is required. Provide it in the request or configure EBAY_MARKETPLACE_ID.',
+      }),
+    );
+  }
+
+  return Effect.succeed({
+    headers: { 'X-EBAY-C-MARKETPLACE-ID': resolvedMarketplaceId },
+    retryServerErrors: false,
+  });
+};
+
+const requireLogisticsId = (
+  value: unknown,
+  name: string,
+): Effect.Effect<string, EndpointInputError> =>
+  requireStringEffect(value, name).pipe(
+    Effect.flatMap((id) => {
+      const trimmedId = id.trim();
+      return trimmedId
+        ? Effect.succeed(trimmedId)
+        : Effect.fail(
+            new EndpointInputError({
+              parameter: name,
+              message: `${name} is required and must not be blank`,
+            }),
+          );
+    }),
+  );
 
 /** Logistics API (v1_beta) endpoints for the domestic USPS quote and label flow. */
 export class LogisticsApi {
@@ -107,12 +141,13 @@ export class LogisticsApi {
         validatedInput.marketplaceId,
         'marketplaceId',
       );
+      const requestConfig = yield* marketplaceHeaderConfig(client, marketplaceId);
 
       return yield* requestPostEffect<ShippingQuoteResponse>(
         client,
         path,
         shippingQuoteRequest,
-        marketplaceHeaderConfig(marketplaceId),
+        requestConfig,
       );
     });
   };
@@ -140,14 +175,14 @@ export class LogisticsApi {
 
     return Effect.gen(function* () {
       const validatedInput = yield* requireObjectEffect<GetShippingQuoteInput>(input, 'input');
-      const shippingQuoteId = yield* requireStringEffect(
+      const shippingQuoteId = yield* requireLogisticsId(
         validatedInput.shippingQuoteId,
         'shippingQuoteId',
       );
 
       return yield* requestGetEffect<ShippingQuoteResponse>(
         client,
-        `${basePath}/shipping_quote/${shippingQuoteId}`,
+        `${basePath}/shipping_quote/${encodeURIComponent(shippingQuoteId)}`,
       );
     });
   };
@@ -188,12 +223,13 @@ export class LogisticsApi {
         validatedInput.marketplaceId,
         'marketplaceId',
       );
+      const requestConfig = yield* marketplaceHeaderConfig(client, marketplaceId);
 
       return yield* requestPostEffect<ShipmentResponse>(
         client,
         path,
         createShipmentFromQuoteRequest,
-        marketplaceHeaderConfig(marketplaceId),
+        requestConfig,
       );
     });
   };
@@ -219,9 +255,12 @@ export class LogisticsApi {
 
     return Effect.gen(function* () {
       const validatedInput = yield* requireObjectEffect<ShipmentIdInput>(input, 'input');
-      const shipmentId = yield* requireStringEffect(validatedInput.shipmentId, 'shipmentId');
+      const shipmentId = yield* requireLogisticsId(validatedInput.shipmentId, 'shipmentId');
 
-      return yield* requestGetEffect<ShipmentResponse>(client, `${basePath}/shipment/${shipmentId}`);
+      return yield* requestGetEffect<ShipmentResponse>(
+        client,
+        `${basePath}/shipment/${encodeURIComponent(shipmentId)}`,
+      );
     });
   };
 
@@ -248,12 +287,13 @@ export class LogisticsApi {
 
     return Effect.gen(function* () {
       const validatedInput = yield* requireObjectEffect<ShipmentIdInput>(input, 'input');
-      const shipmentId = yield* requireStringEffect(validatedInput.shipmentId, 'shipmentId');
+      const shipmentId = yield* requireLogisticsId(validatedInput.shipmentId, 'shipmentId');
 
       return yield* requestPostEffect<ShipmentResponse>(
         client,
-        `${basePath}/shipment/${shipmentId}/cancel`,
+        `${basePath}/shipment/${encodeURIComponent(shipmentId)}/cancel`,
         {},
+        { retryServerErrors: false },
       );
     });
   };
@@ -281,23 +321,30 @@ export class LogisticsApi {
 
     return Effect.gen(function* () {
       const validatedInput = yield* requireObjectEffect<DownloadLabelFileInput>(input, 'input');
-      const shipmentId = yield* requireStringEffect(validatedInput.shipmentId, 'shipmentId');
-      const accept = (yield* optionalStringEffect(validatedInput.accept, 'accept')) ??
-        'application/pdf';
+      const shipmentId = yield* requireLogisticsId(validatedInput.shipmentId, 'shipmentId');
+      const accept = yield* optionalStringEffect(validatedInput.accept, 'accept');
+      if (accept !== undefined && accept !== 'application/pdf') {
+        return yield* Effect.fail(
+          new EndpointInputError({
+            parameter: 'accept',
+            message: 'accept must be application/pdf when provided.',
+          }),
+        );
+      }
 
       const labelBuffer = yield* requestGetEffect<Buffer>(
         client,
-        `${basePath}/shipment/${shipmentId}/download_label_file`,
+        `${basePath}/shipment/${encodeURIComponent(shipmentId)}/download_label_file`,
         undefined,
         {
-          headers: { Accept: accept },
+          headers: { Accept: 'application/pdf' },
           responseType: 'arraybuffer',
         },
       );
 
       return {
         shipmentId,
-        contentType: accept,
+        contentType: 'application/pdf',
         encoding: 'base64',
         data: labelBuffer.toString('base64'),
         sizeBytes: labelBuffer.byteLength,

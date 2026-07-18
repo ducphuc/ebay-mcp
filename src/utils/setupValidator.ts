@@ -4,11 +4,11 @@
  * Tests the configuration after setup to ensure everything is working properly.
  */
 
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, readFileSync } from 'node:fs';
 import chalk from 'chalk';
 import { EbayOAuthClient } from '@/auth/oauth.js';
 import { getOAuthAuthorizationUrl } from '@/config/environment.js';
+import { getEbayEnvPathForProject } from '@/config/envPath.js';
 import { parseEnvFile } from './envParser.js';
 import { getErrorMessage } from '@/utils/errors.js';
 import type { EbayConfig } from '@/types/ebay.js';
@@ -47,7 +47,7 @@ export interface ValidationSummary {
  * Validates that the .env file exists and is readable.
  */
 const validateEnvFile = (projectRoot: string): ValidationResult => {
-  const envPath = join(projectRoot, '.env');
+  const envPath = getEbayEnvPathForProject(projectRoot);
 
   if (!existsSync(envPath)) {
     return {
@@ -264,7 +264,7 @@ export const validateSetup = async (projectRoot: string): Promise<ValidationSumm
   }
 
   // Parse .env file
-  const envPath = join(projectRoot, '.env');
+  const envPath = getEbayEnvPathForProject(projectRoot);
   const envVars = parseEnvFile(envPath);
 
   // Test 2: App credentials

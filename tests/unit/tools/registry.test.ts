@@ -56,4 +56,36 @@ describe('tool registry', () => {
       'Unknown tool: unknown_tool',
     );
   });
+
+  it('registers all nine Media and Logistics port tools with executable handlers', () => {
+    const expectedNames = [
+      'ebay_media_create_image_from_file',
+      'ebay_media_create_image_from_url',
+      'ebay_media_get_image',
+      'ebay_logistics_create_shipping_quote',
+      'ebay_logistics_get_shipping_quote',
+      'ebay_logistics_create_from_shipping_quote',
+      'ebay_logistics_get_shipment',
+      'ebay_logistics_cancel_shipment',
+      'ebay_logistics_download_label_file',
+    ];
+    const entries = getToolEntries();
+    const portEntries = entries.filter((entry) => expectedNames.includes(entry.definition.name));
+
+    expect(portEntries.map((entry) => entry.definition.name).sort()).toEqual(expectedNames.sort());
+    expect(portEntries.every((entry) => typeof entry.handler === 'function')).toBe(true);
+    expect(
+      portEntries
+        .filter((entry) => entry.wireOutputSchema)
+        .map((entry) => entry.definition.name)
+        .sort(),
+    ).toEqual(
+      [
+        'ebay_media_create_image_from_file',
+        'ebay_media_create_image_from_url',
+        'ebay_media_get_image',
+        'ebay_logistics_download_label_file',
+      ].sort(),
+    );
+  });
 });

@@ -87,6 +87,21 @@ These credentials are obtained from the [eBay Developer Portal](https://develope
 - **Default:** `en-US`
 - **Behavior:** Sent on all requests; defaults to `en-US` if unset. Per-tool overrides are not currently exposed.
 
+#### `EBAY_ENV_PATH`
+
+- **Description:** Alternate `.env` file used consistently for loading, setup, diagnostics, validation, security checks, and refreshed-token persistence
+- **Example:** `/Users/example/.config/ebay-mcp.env`
+- **Required:** No
+- **Default:** The package or project root `.env`
+- **Behavior:** Absolute paths are used directly; relative paths resolve from the process working directory.
+
+#### `EBAY_MCP_MEDIA_ROOT`
+
+- **Description:** Absolute allowed directory for local Commerce Media uploads
+- **Example:** `/Users/example/ebay-images`
+- **Required:** No; local file upload remains unavailable until configured
+- **Security:** Paths are canonicalized and must remain beneath this root after resolving symlinks. Only regular readable JPEG, PNG, GIF, BMP, TIFF, WEBP, AVIF, and HEIC files up to 12 MiB are accepted. File content determines MIME type. URL uploads separately require an absolute `https:` URL with a host.
+
 #### `EBAY_MCP_TOOLS`
 
 - **Description:** Controls how many tools the server advertises to the agent, to manage context-window usage
@@ -96,7 +111,17 @@ These credentials are obtained from the [eBay Developer Portal](https://develope
 - **Behavior:**
   - `all` (or unset) — every tool is advertised at startup (original behavior).
   - `dynamic` — only three discovery tools are advertised (`list_ebay_tools`, `enable_ebay_tools`, `disable_ebay_tools`); the agent searches the catalogue and enables tools on demand, which then appear natively. Requires a host that honors `tools/listChanged` (e.g. Claude); not suitable for hosts that ignore it.
-  - A comma-separated family list — registers **only** those families, frozen for the session; works on every host. The list is literal (ChatGPT connectors must include `connector`). Valid families: `connector`, `token-management`, `account`, `inventory`, `fulfillment`, `marketing`, `analytics`, `metadata`, `taxonomy`, `communication`, `other`, `developer`, `trading`. An unknown family name fails validation at startup.
+  - A comma-separated family list — registers **only** those families, frozen for the session; works on every host. The list is literal (ChatGPT connectors must include `connector`). Valid families: `connector`, `token-management`, `account`, `inventory`, `fulfillment`, `marketing`, `analytics`, `metadata`, `taxonomy`, `communication`, `other`, `developer`, `trading`, `media`, `logistics`. An unknown family name fails validation at startup.
+
+#### Logistics Limited Release opt-in
+
+The `logistics` tools currently validate domestic-US shipping and require an eBay-approved Limited Release application. The restricted `https://api.ebay.com/oauth/api_scope/sell.logistics` scope is deliberately excluded from normal defaults. After eBay approves the application, request it explicitly:
+
+```bash
+npm run setup -- --logistics
+```
+
+The wizard also offers an approved-app prompt whose default is **No**. Refresh-token grants omit a scope parameter so refreshing cannot narrow an existing token. Logistics label downloads accept and return `application/pdf` only.
 
 ### Required: User Refresh Token (For OAuth Flow)
 

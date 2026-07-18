@@ -50,3 +50,12 @@ export const getEbayEnvPath = (env: NodeJS.ProcessEnv = process.env): string => 
 
   return getPackageEnvPath();
 };
+
+/** Resolve the selected env path with a caller-supplied project root as the default. */
+export const getEbayEnvPathForProject = (
+  projectRoot: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string => {
+  const override = env[EBAY_ENV_PATH_VARIABLE]?.trim();
+  return override ? getEbayEnvPath(env) : join(projectRoot, '.env');
+};

@@ -1,6 +1,10 @@
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, readFileSync } from 'node:fs';
 import dotenv from 'dotenv';
+import { getEbayEnvPathForProject } from '@/config/envPath.js';
+import { getDefaultScopes, type EbayEnvironment } from '@/config/environment.js';
+import { LOGISTICS_OAUTH_SCOPE } from '@/config/logistics.js';
+
+const DOTENV_QUOTING_REQUIRED = /[#\s"'`]/;
 
 /**
  * Load existing key/value config from the project .env file.
@@ -20,7 +24,7 @@ import dotenv from 'dotenv';
  * ```
  */
 export const loadExistingConfig = (projectRoot: string): Record<string, string> => {
-  const envPath = join(projectRoot, '.env');
+  const envPath = getEbayEnvPathForProject(projectRoot);
   if (!existsSync(envPath)) {
     return {};
   }
@@ -56,11 +60,25 @@ export const loadExistingConfig = (projectRoot: string): Record<string, string> 
  * ```
  */
 export const quoteEnvValue = (value: string): string => {
-  if (value === '' || !/[#\s"'`]/.test(value)) {
+  if (value === '' || !DOTENV_QUOTING_REQUIRED.test(value)) {
     return value;
   }
   return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 };
+
+/** Build a refresh-token grant without narrowing the scopes carried by the token. */
+export const createSetupRefreshGrantBody = (refreshToken: string): URLSearchParams =>
+  new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refreshToken,
+  });
+
+/** Resolve setup authorization scopes, leaving restricted Logistics opt-in by default. */
+export const getSetupAuthorizationScopes = (
+  environment: EbayEnvironment,
+  includeLogistics: boolean,
+): string[] | undefined =>
+  includeLogistics ? [...getDefaultScopes(environment), LOGISTICS_OAUTH_SCOPE] : undefined;
 
 /**
  * Parse environment with safe sandbox default.

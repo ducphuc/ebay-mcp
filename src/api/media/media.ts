@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { basename, extname } from 'node:path';
+import { basename } from 'node:path';
 import type { EbayApiClient } from '@/api/client.js';
+import { readLocalMediaImage } from './localImage.js';
 import {
   EbayApiError,
   EndpointInputError,
@@ -11,6 +11,7 @@ import {
 } from '@/api/shared/request.js';
 import type { EbayEnvironment } from '@/config/environment.js';
 import { getMediaBaseUrl } from '@/config/environment.js';
+import { getMediaUploadRoot, isSupportedMediaMimeType } from '@/config/media.js';
 import type {
   createImageFromFileInputSchema,
   createImageFromUrlInputSchema,
@@ -18,7 +19,6 @@ import type {
 } from '@/schemas/media/media.js';
 import type { components } from '@/types/sell-apps/listing-management/commerceMediaV1BetaOas3.js';
 import type { InferEffectSchema } from '@/utils/effectSchemaTypes.js';
-import { getErrorMessage } from '@/utils/errors.js';
 import { Effect } from 'effect';
 
 /** Input accepted by createImageFromFile. */
@@ -44,27 +44,6 @@ export interface MediaImageResponse extends ImageResponse {
   /** getImage URI returned in the Location response header when available. */
   location?: string;
 }
-
-const EXTENSION_MIME_TYPES: Record<string, string> = {
-  '.avif': 'image/avif',
-  '.bmp': 'image/bmp',
-  '.gif': 'image/gif',
-  '.heic': 'image/heic',
-  '.jpeg': 'image/jpeg',
-  '.jpg': 'image/jpeg',
-  '.png': 'image/png',
-  '.tif': 'image/tiff',
-  '.tiff': 'image/tiff',
-  '.webp': 'image/webp',
-};
-
-const inferMimeType = (filePath: string, providedMimeType: string | undefined): string => {
-  if (providedMimeType) {
-    return providedMimeType;
-  }
-
-  return EXTENSION_MIME_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream';
-};
 
 const getHeader = (headers: Record<string, string>, headerName: string): string | undefined => {
   const lowerName = headerName.toLowerCase();
@@ -139,6 +118,7 @@ export class MediaApi {
     private readonly client: EbayApiClient,
     environment: EbayEnvironment = 'production',
     apiBaseUrl?: string,
+    private readonly mediaUploadRoot: string | undefined = getMediaUploadRoot(),
   ) {
     this.mediaBaseUrl = getMediaBaseUrl(environment, apiBaseUrl);
   }
@@ -149,11 +129,15 @@ export class MediaApi {
     path: string,
     data: unknown,
     headers: Record<string, string> | undefined,
-  ): Effect.Effect<{ data: ImageResponse | undefined; headers: Record<string, string> }, EbayApiError> =>
+  ): Effect.Effect<
+    { data: ImageResponse | undefined; headers: Record<string, string> },
+    EbayApiError
+  > =>
     Effect.tryPromise({
       try: () =>
         this.client.requestRaw<ImageResponse | undefined>(method, path, data, {
           baseURL: this.mediaBaseUrl,
+          ...(method === 'POST' ? { retryServerErrors: false } : {}),
           ...(headers === undefined ? {} : { headers }),
         }),
       catch: (cause) => new EbayApiError({ method, path, cause }),
@@ -180,26 +164,28 @@ export class MediaApi {
   ): Effect.Effect<MediaImageResponse, EbayApiError | EndpointInputError> => {
     const basePath = this.basePath;
     const requestRawEffect = this.requestRawEffect;
+    const mediaUploadRoot = this.mediaUploadRoot;
 
     return Effect.gen(function* () {
       const validatedInput = yield* requireObjectEffect<CreateImageFromFileInput>(input, 'input');
       const filePath = yield* requireStringEffect(validatedInput.filePath, 'filePath');
       const fileName = yield* optionalStringEffect(validatedInput.fileName, 'fileName');
       const mimeType = yield* optionalStringEffect(validatedInput.mimeType, 'mimeType');
-
-      const fileBuffer = yield* Effect.tryPromise({
-        try: () => readFile(filePath),
-        catch: (cause) =>
+      if (mimeType && !isSupportedMediaMimeType(mimeType)) {
+        return yield* Effect.fail(
           new EndpointInputError({
-            parameter: 'filePath',
-            message: `filePath is not readable: ${getErrorMessage(cause)}`,
+            parameter: 'mimeType',
+            message: `Unsupported Media image mimeType: ${mimeType}`,
           }),
-      });
+        );
+      }
+
+      const image = yield* readLocalMediaImage(filePath, mediaUploadRoot, mimeType);
 
       const multipart = createMultipartImageBody(
-        fileBuffer,
-        fileName ?? basename(filePath),
-        inferMimeType(filePath, mimeType),
+        image.buffer,
+        fileName ?? basename(image.canonicalPath),
+        image.mimeType,
       );
 
       const response = yield* requestRawEffect(
@@ -238,6 +224,22 @@ export class MediaApi {
     return Effect.gen(function* () {
       const validatedInput = yield* requireObjectEffect<CreateImageFromUrlInput>(input, 'input');
       const imageUrl = yield* requireStringEffect(validatedInput.imageUrl, 'imageUrl');
+      const parsedUrl = yield* Effect.try({
+        try: () => new URL(imageUrl),
+        catch: () =>
+          new EndpointInputError({
+            parameter: 'imageUrl',
+            message: 'imageUrl must be an absolute HTTPS URL.',
+          }),
+      });
+      if (parsedUrl.protocol !== 'https:' || !parsedUrl.hostname) {
+        return yield* Effect.fail(
+          new EndpointInputError({
+            parameter: 'imageUrl',
+            message: 'imageUrl must be an absolute HTTPS URL with a host.',
+          }),
+        );
+      }
 
       const response = yield* requestRawEffect(
         'POST',

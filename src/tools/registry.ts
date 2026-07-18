@@ -2,6 +2,7 @@ import { registeredEntries } from '@/tools/categories/index.js';
 import type { ToolDefinition } from '@/tools/definitions/types.js';
 import type { ToolHandler } from '@/tools/tool-handlers/types.js';
 import type { ViewArchetype, ViewModel } from '@/tools/ui/viewModels.js';
+import type { EffectBackedSchema } from '@/utils/effectSchemaTypes.js';
 import { Data, Effect } from 'effect';
 
 /** Tagged failure returned when the tool registry cannot resolve a runnable tool. */
@@ -34,6 +35,8 @@ export interface ResolvedToolUi {
 export interface ToolEntry {
   definition: ToolDefinition;
   handler: ToolHandler;
+  /** Executable output schema passed to the MCP SDK; legacy JSON output metadata is not. */
+  wireOutputSchema?: EffectBackedSchema;
   /** Present only for tools that render an interactive view; consumed by the runtime seam. */
   ui?: ResolvedToolUi;
 }

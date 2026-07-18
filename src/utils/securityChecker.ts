@@ -2,10 +2,11 @@
  * Security Checker - Pre-flight security and environment checks
  */
 
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
-import { execSync } from 'child_process';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import chalk from 'chalk';
+import { getEbayEnvPathForProject } from '@/config/envPath.js';
 import { Effect, Either } from 'effect';
 import process from 'node:process';
 import { writeCliLine } from './cliOutput.js';
@@ -240,7 +241,7 @@ export const checkDependencies = (projectRoot: string): SecurityCheckResult => {
  */
 export const checkGitTracking = (projectRoot: string): SecurityCheckResult => {
   const gitPath = join(projectRoot, '.git');
-  const envPath = join(projectRoot, '.env');
+  const envPath = getEbayEnvPathForProject(projectRoot);
 
   if (!existsSync(gitPath)) {
     return {
@@ -260,11 +261,25 @@ export const checkGitTracking = (projectRoot: string): SecurityCheckResult => {
     };
   }
 
+  const envPathFromRoot = relative(projectRoot, envPath);
+  if (
+    envPathFromRoot === '..' ||
+    envPathFromRoot.startsWith(`..${sep}`) ||
+    isAbsolute(envPathFromRoot)
+  ) {
+    return {
+      check: 'Git Tracking',
+      passed: true,
+      message: 'Configured env file is outside this repository',
+      severity: 'info',
+    };
+  }
+
   const tracked = Effect.runSync(
     Effect.either(
       Effect.try({
         try: () =>
-          execSync('git ls-files .env', {
+          execFileSync('git', ['ls-files', '--', envPathFromRoot], {
             cwd: projectRoot,
             encoding: 'utf-8',
           }).trim(),

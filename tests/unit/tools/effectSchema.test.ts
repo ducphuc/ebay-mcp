@@ -82,4 +82,23 @@ describe('Effect-backed tool schemas', () => {
       ]).invalidInputSchemaFields,
     ).toEqual(['fake_contract.fake']);
   });
+
+  it('does not allow raw-result wire schemas to collide with UI view schemas', () => {
+    expect(() =>
+      defineTool({
+        name: 'invalid_wire_and_ui_tool',
+        description: 'Invalid combination',
+        inputSchema: {},
+        wireOutputSchema: z.object({ value: z.string() }),
+        handler: () => ({ value: 'raw' }),
+        ui: {
+          archetype: 'stat',
+          map: () => ({
+            archetype: 'stat',
+            tiles: [],
+          }),
+        },
+      }),
+    ).toThrow(/cannot combine wireOutputSchema with ui/);
+  });
 });

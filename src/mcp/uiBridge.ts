@@ -237,12 +237,21 @@ export const createUiBridge = (server: McpServer, moduleUrl: string): UiBridge =
   }
 
   let uiEnabled = false;
-  const uiTools: { registered: RegisteredTool; resourceUri: string }[] = [];
+  const uiTools: {
+    registered: RegisteredTool;
+    resourceUri: string;
+    nonUiMeta?: Record<string, unknown>;
+  }[] = [];
 
   return {
     register(entry, registered) {
       if (entry.ui && available.has(entry.ui.archetype)) {
-        uiTools.push({ registered, resourceUri: entry.ui.resourceUri });
+        const { ui: _ui, ...nonUiMeta } = entry.definition._meta ?? {};
+        uiTools.push({
+          registered,
+          resourceUri: entry.ui.resourceUri,
+          nonUiMeta: Object.keys(nonUiMeta).length > 0 ? nonUiMeta : undefined,
+        });
       }
     },
 
@@ -258,9 +267,10 @@ export const createUiBridge = (server: McpServer, moduleUrl: string): UiBridge =
         if (!uiEnabled) {
           return;
         }
-        for (const { registered, resourceUri } of uiTools) {
+        for (const { registered, resourceUri, nonUiMeta } of uiTools) {
           registered.update({
             _meta: {
+              ...nonUiMeta,
               ui: { resourceUri },
               [RESOURCE_URI_META_KEY]: resourceUri,
             },

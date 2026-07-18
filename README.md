@@ -97,6 +97,8 @@ Use this map when deciding which tool family to expose, or when asking an assist
 | `other` | Identity, compliance, VeRO, translation, and international shipping support APIs | "Show my current seller identity details." |
 | `developer` / `token-management` | Rate limits, signing keys, OAuth URLs, token refresh, and diagnostics | "Check my eBay API rate limits." |
 | `trading` | Legacy XML fixed-price listing create, revise, relist, and end operations | "Create a fixed-price listing draft from this SKU." |
+| `media` | Secure local or HTTPS image uploads to eBay Picture Services and image lookup | "Upload this product image to eBay." |
+| `logistics` | Limited Release domestic-US USPS quotes, label purchase, cancellation, and PDF download | "Quote shipping for this eBay order." |
 | `connector` | ChatGPT connector search/fetch tools over the eBay MCP catalogue | "Search the eBay tool catalogue for order tools." |
 
 ## eBay MCP vs. the raw eBay API
@@ -235,6 +237,8 @@ EBAY_REDIRECT_URI=your_runame
 EBAY_MARKETPLACE_ID=EBAY_US         # default marketplace (overridable per tool)
 EBAY_CONTENT_LANGUAGE=en-US         # default request content language
 EBAY_USER_REFRESH_TOKEN=your_token  # for higher rate limits
+EBAY_ENV_PATH=/path/to/ebay.env     # optional alternate env file for reads and writes
+EBAY_MCP_MEDIA_ROOT=/path/to/images # absolute allowed root for local Media uploads
 EBAY_MCP_UI=on                      # interactive MCP Apps views (beta); "off" forces plain JSON
 EBAY_MCP_TOOLS=all                  # tool exposure: "all", "dynamic", or a family list (see below)
 ```
@@ -249,7 +253,11 @@ By default all tools are advertised to the agent at once. On a long conversation
 | `dynamic`                   | Only three discovery tools are visible (`list_ebay_tools`, `enable_ebay_tools`, `disable_ebay_tools`). The agent searches the catalogue and loads only the tools it needs; they then appear natively. | hosts that honor `tools/listChanged` (e.g. Claude) |
 | `inventory,fulfillment,…`   | Registers **only** the named families (listed below), frozen for the session.                                                                          | every host (incl. ChatGPT, Cursor)      |
 
-The family list is literal — you get exactly what you name. ChatGPT connectors need the `connector` family (its `search`/`fetch` tools); add it explicitly, e.g. `EBAY_MCP_TOOLS=connector,inventory`. An unknown family name fails fast at startup with the valid list. Valid families: `connector`, `token-management`, `account`, `inventory`, `fulfillment`, `marketing`, `analytics`, `metadata`, `taxonomy`, `communication`, `other`, `developer`, `trading`.
+The family list is literal — you get exactly what you name. ChatGPT connectors need the `connector` family (its `search`/`fetch` tools); add it explicitly, e.g. `EBAY_MCP_TOOLS=connector,inventory`. An unknown family name fails fast at startup with the valid list. Valid families: `connector`, `token-management`, `account`, `inventory`, `fulfillment`, `marketing`, `analytics`, `metadata`, `taxonomy`, `communication`, `other`, `developer`, `trading`, `media`, `logistics`.
+
+Local Media file uploads stay registered but are unavailable until `EBAY_MCP_MEDIA_ROOT` names an absolute allowed directory. Files must resolve beneath that root, be regular readable JPEG, PNG, GIF, BMP, TIFF, WEBP, AVIF, or HEIC images, and be no larger than 12 MiB. URL uploads require an absolute public `https:` URL.
+
+The Logistics API is an eBay Limited Release currently restricted here to domestic-US requests. It requires app approval and the opt-in `sell.logistics` permission; after approval, run `npm run setup -- --logistics`. Labels are PDF-only.
 
 ### Authentication & rate limits
 

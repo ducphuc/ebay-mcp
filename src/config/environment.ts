@@ -1,11 +1,12 @@
 import { config } from 'dotenv';
 import { existsSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, isAbsolute, join } from 'path';
 import { getEbayEnvPath } from '@/config/envPath.js';
 import type { EbayConfig } from '@/types/ebay.js';
 import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
 import { getToolGatingConfigError } from '@/config/toolFamilies.js';
+import { LOGISTICS_OAUTH_SCOPE } from '@/config/logistics.js';
 import { getErrorMessage } from '@/utils/errors.js';
 import { getVersion } from '@/utils/version.js';
 import { Effect, Either } from 'effect';
@@ -218,7 +219,7 @@ export const validateScopes = (
   environment: EbayEnvironment,
 ): ScopeValidationResult => {
   const validScopes = getAvailableScopes(environment);
-  const validScopeSet = new Set(validScopes);
+  const validScopeSet = new Set([...validScopes, LOGISTICS_OAUTH_SCOPE]);
   const warnings: string[] = [];
   const requestedValidScopes: string[] = [];
 
@@ -298,6 +299,11 @@ export const validateEnvironmentConfig = (): EnvironmentValidationResult => {
   const toolGatingError = getToolGatingConfigError();
   if (toolGatingError) {
     errors.push(toolGatingError);
+  }
+
+  const mediaRoot = process.env.EBAY_MCP_MEDIA_ROOT?.trim();
+  if (mediaRoot && !isAbsolute(mediaRoot)) {
+    errors.push('EBAY_MCP_MEDIA_ROOT must be an absolute directory path when set.');
   }
 
   const isValid = errors.length === 0;

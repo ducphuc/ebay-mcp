@@ -74,6 +74,8 @@ describe('EbaySellerApi', () => {
       expect(api.vero).toBeDefined();
       expect(api.translation).toBeDefined();
       expect(api.edelivery).toBeDefined();
+      expect(api.media).toBeDefined();
+      expect(api.logistics).toBeDefined();
     });
   });
 

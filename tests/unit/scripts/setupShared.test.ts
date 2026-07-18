@@ -11,12 +11,17 @@
  * stray quotes.
  */
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import dotenv from 'dotenv';
-import { loadExistingConfig, quoteEnvValue } from '@/scripts/setupShared.js';
+import {
+  createSetupRefreshGrantBody,
+  getSetupAuthorizationScopes,
+  loadExistingConfig,
+  quoteEnvValue,
+} from '@/scripts/setupShared.js';
 
 const SAMPLE_REFRESH_TOKEN = 'v^1.1#i^1#I^3#r^1#p^3#f^0#t^Ul41Xz==';
 
@@ -47,11 +52,31 @@ describe('quoteEnvValue', () => {
   });
 });
 
+describe('setup refresh grant', () => {
+  it('preserves token scope by omitting the optional scope parameter', () => {
+    const body = createSetupRefreshGrantBody(SAMPLE_REFRESH_TOKEN);
+
+    expect(body.get('grant_type')).toBe('refresh_token');
+    expect(body.get('refresh_token')).toBe(SAMPLE_REFRESH_TOKEN);
+    expect(body.has('scope')).toBe(false);
+  });
+});
+
+describe('setup Logistics opt-in', () => {
+  it('keeps Logistics out of defaults and adds it only when approved', () => {
+    expect(getSetupAuthorizationScopes('production', false)).toBeUndefined();
+    expect(getSetupAuthorizationScopes('production', true)).toContain(
+      'https://api.ebay.com/oauth/api_scope/sell.logistics',
+    );
+  });
+});
+
 describe('loadExistingConfig', () => {
   let dir: string;
 
   afterEach(() => {
     if (dir) rmSync(dir, { recursive: true, force: true });
+    vi.unstubAllEnvs();
   });
 
   it('reads a quoted #-token back without the surrounding quotes', () => {
@@ -75,5 +100,16 @@ describe('loadExistingConfig', () => {
   it('returns an empty object when no .env exists', () => {
     dir = mkdtempSync(join(tmpdir(), 'ebay-env-'));
     expect(loadExistingConfig(dir)).toEqual({});
+  });
+
+  it('reads EBAY_ENV_PATH instead of the project-root .env', () => {
+    dir = mkdtempSync(join(tmpdir(), 'ebay-env-'));
+    const customPath = join(dir, 'custom.env');
+    writeFileSync(customPath, 'EBAY_ENVIRONMENT=production\n');
+    vi.stubEnv('EBAY_ENV_PATH', customPath);
+
+    expect(loadExistingConfig(join(dir, 'different-project'))).toEqual({
+      EBAY_ENVIRONMENT: 'production',
+    });
   });
 });

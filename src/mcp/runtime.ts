@@ -41,7 +41,7 @@ export interface EbayMcpRuntime {
   initializeApi(): Promise<void>;
 }
 
-function formatToolSuccess(result: unknown) {
+function formatToolSuccess(result: unknown, includeStructuredContent: boolean) {
   return {
     content: [
       {
@@ -49,6 +49,7 @@ function formatToolSuccess(result: unknown) {
         text: JSON.stringify(result, null, 2),
       },
     ],
+    ...(includeStructuredContent ? { structuredContent: result as Record<string, unknown> } : {}),
   };
 }
 
@@ -66,6 +67,14 @@ function formatToolFailure(error: unknown) {
   };
 }
 
+const getNonUiMeta = (
+  meta: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined => {
+  if (!meta) return undefined;
+  const { ui: _ui, ...nonUiMeta } = meta;
+  return Object.keys(nonUiMeta).length > 0 ? nonUiMeta : undefined;
+};
+
 function registerTool(
   server: McpServer,
   api: EbaySellerApi,
@@ -80,8 +89,14 @@ function registerTool(
   const registered = server.registerTool(
     definition.name,
     {
+      title: definition.title,
       description: definition.description,
       inputSchema: definition.inputSchema,
+      // Legacy definition.outputSchema values are JSON metadata, not executable
+      // Zod schemas. Only the explicitly executable wire schema reaches the SDK.
+      outputSchema: entry.wireOutputSchema,
+      annotations: definition.annotations,
+      _meta: getNonUiMeta(definition._meta),
     },
     async (args: ToolArgs) => {
       if (logToolExecution) {
@@ -100,7 +115,7 @@ function registerTool(
 
             return ui.shouldRender(entry)
               ? buildUiToolResult(entry.ui, result)
-              : formatToolSuccess(result);
+              : formatToolSuccess(result, entry.wireOutputSchema !== undefined);
           }),
           Effect.catchAll((error) => {
             const errorMessage = getErrorMessage(error);

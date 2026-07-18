@@ -16,7 +16,7 @@ describe('MediaApi', () => {
     client = {
       requestRaw: vi.fn(),
     } as unknown as EbayApiClient;
-    api = new MediaApi(client);
+    api = new MediaApi(client, 'production', undefined, tempDir);
   });
 
   afterEach(async () => {
@@ -30,6 +30,7 @@ describe('MediaApi', () => {
     tempDir = await mkdtemp(join(tmpdir(), 'ebay-media-'));
     const filePath = join(tempDir, 'photo.jpg');
     await writeFile(filePath, Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+    api = new MediaApi(client, 'production', undefined, tempDir);
 
     vi.mocked(client.requestRaw).mockResolvedValue({
       data: {
@@ -52,6 +53,7 @@ describe('MediaApi', () => {
       expect.any(Buffer),
       expect.objectContaining({
         baseURL: 'https://apim.ebay.com',
+        retryServerErrors: false,
         headers: expect.objectContaining({
           'Content-Type': expect.stringContaining('multipart/form-data; boundary='),
         }),
@@ -67,8 +69,10 @@ describe('MediaApi', () => {
   });
 
   it('fails with a tagged input error before calling eBay when the local file does not exist', async () => {
+    tempDir = await mkdtemp(join(tmpdir(), 'ebay-media-'));
+    api = new MediaApi(client, 'production', undefined, tempDir);
     const result = await Effect.runPromise(
-      Effect.either(api.createImageFromFile({ filePath: '/no/such/file.jpg' })),
+      Effect.either(api.createImageFromFile({ filePath: 'missing.jpg' })),
     );
 
     expect(result._tag).toBe('Left');
@@ -97,10 +101,25 @@ describe('MediaApi', () => {
       'POST',
       '/commerce/media/v1_beta/image/create_image_from_url',
       { imageUrl: 'https://example.com/photo.png' },
-      { baseURL: 'https://apim.ebay.com' },
+      { baseURL: 'https://apim.ebay.com', retryServerErrors: false },
     );
     expect(result.imageId).toBe('IMAGE-456');
     expect(result.location).toBe('https://apim.ebay.com/commerce/media/v1_beta/image/IMAGE-456');
+  });
+
+  it.each([
+    'http://example.com/photo.png',
+    '/photo.png',
+    'not-a-url',
+  ])('rejects non-HTTPS or non-absolute image URL %s', async (imageUrl) => {
+    const result = await Effect.runPromise(
+      Effect.either(
+        api.createImageFromUrl({ imageUrl } as Parameters<typeof api.createImageFromUrl>[0]),
+      ),
+    );
+
+    expect(result._tag).toBe('Left');
+    expect(client.requestRaw).not.toHaveBeenCalled();
   });
 
   it('gets an image by ID', async () => {

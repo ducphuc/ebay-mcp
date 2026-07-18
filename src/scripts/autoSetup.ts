@@ -19,15 +19,16 @@ import { Effect, Either } from 'effect';
 import { fileURLToPath } from 'url';
 import type { DetectedMCPClient, MCPServerConfig } from '@/utils/llmClientDetector.js';
 import { getErrorMessage } from '@/utils/errors.js';
+import { getEbayEnvPathForProject } from '@/config/envPath.js';
 import { isRecord } from '@/utils/typeGuards.js';
 import process from 'node:process';
-
-// Load environment variables silently
-config({ quiet: true });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PROJECT_ROOT = join(__dirname, '../..');
+
+// Load the same environment file used by the server and token persistence.
+config({ path: getEbayEnvPathForProject(PROJECT_ROOT), quiet: true });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Color Utilities
@@ -381,7 +382,7 @@ function validateAutoSetupEnvironment(): { valid: boolean; errors: string[]; war
   const warnings: string[] = [];
 
   // Check .env file exists
-  const envPath = join(PROJECT_ROOT, '.env');
+  const envPath = getEbayEnvPathForProject(PROJECT_ROOT);
   if (!existsSync(envPath)) {
     errors.push('.env file not found. Copy .env.example to .env and fill in your credentials.');
     return { valid: false, errors, warnings };

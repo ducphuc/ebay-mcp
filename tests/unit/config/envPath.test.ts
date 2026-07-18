@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { getEbayEnvPath, getPackageEnvPath } from '@/config/envPath.js';
+import { getEbayEnvPath, getEbayEnvPathForProject, getPackageEnvPath } from '@/config/envPath.js';
 import { describe, expect, it } from 'vitest';
 import process from 'node:process';
 
@@ -19,5 +19,13 @@ describe('eBay env path', () => {
   it('falls back to the installed package .env path', () => {
     expect(getEbayEnvPath({} as NodeJS.ProcessEnv)).toBe(getPackageEnvPath());
     expect(getPackageEnvPath()).toMatch(/[\\/]\.env$/);
+  });
+
+  it('uses the caller project root only when EBAY_ENV_PATH is absent', () => {
+    const projectRoot = path.join(path.sep, 'tmp', 'project');
+    const override = path.join(path.sep, 'tmp', 'custom.env');
+
+    expect(getEbayEnvPathForProject(projectRoot, {})).toBe(path.join(projectRoot, '.env'));
+    expect(getEbayEnvPathForProject(projectRoot, { EBAY_ENV_PATH: override })).toBe(override);
   });
 });

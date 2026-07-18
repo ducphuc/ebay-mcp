@@ -11,7 +11,11 @@ import type {
   ViewModel,
 } from '@/tools/ui/viewModels.js';
 import { decodeEffectSchemaSync, z } from '@/utils/effectSchema.js';
-import type { EffectBackedRawShape, InferEffectRawShape } from '@/utils/effectSchemaTypes.js';
+import type {
+  EffectBackedRawShape,
+  EffectBackedSchema,
+  InferEffectRawShape,
+} from '@/utils/effectSchemaTypes.js';
 
 /**
  * Declarative opt-in for the interactive MCP Apps layer, co-located on the tool
@@ -53,6 +57,8 @@ export interface ToolSpec<Shape extends EffectBackedRawShape, Result = unknown> 
   /** Effect-backed raw shape; doubles as the MCP wire schema and handler arg types. */
   inputSchema: Shape;
   title?: string;
+  /** Executable MCP output contract. Unlike legacy outputSchema metadata, this reaches the SDK. */
+  wireOutputSchema?: EffectBackedSchema;
   outputSchema?: OutputArgs;
   annotations?: ToolAnnotations;
   /** Opaque MCP metadata (e.g. connector category/version) passed through verbatim. */
@@ -121,6 +127,12 @@ function toDefinition<Shape extends EffectBackedRawShape, Result>(
 export const defineTool = <Shape extends EffectBackedRawShape, Result>(
   spec: ToolSpec<Shape, Result>,
 ): ToolEntry => {
+  if (spec.wireOutputSchema && spec.ui) {
+    throw new Error(
+      `Tool ${spec.name} cannot combine wireOutputSchema with ui until view output schemas are supported`,
+    );
+  }
+
   const schema = z.object(spec.inputSchema);
   // Non-async: Effect decode runs synchronously so invalid input rejects via
   // the caller's `await`, and the handler's returned promise passes straight
@@ -131,6 +143,7 @@ export const defineTool = <Shape extends EffectBackedRawShape, Result>(
   return {
     definition: toDefinition(spec),
     handler,
+    wireOutputSchema: spec.wireOutputSchema,
     ui: spec.ui ? resolveToolUi(spec.ui) : undefined,
   };
 };
@@ -166,11 +179,18 @@ export const defineTool = <Shape extends EffectBackedRawShape, Result>(
 export const rawTool = <Shape extends EffectBackedRawShape, Result>(
   spec: ToolSpec<Shape, Result>,
 ): ToolEntry => {
+  if (spec.wireOutputSchema && spec.ui) {
+    throw new Error(
+      `Tool ${spec.name} cannot combine wireOutputSchema with ui until view output schemas are supported`,
+    );
+  }
+
   const handler: ToolHandler = (api, args) => spec.handler(api, args as InferEffectRawShape<Shape>);
 
   return {
     definition: toDefinition(spec),
     handler,
+    wireOutputSchema: spec.wireOutputSchema,
     ui: spec.ui ? resolveToolUi(spec.ui) : undefined,
   };
 };

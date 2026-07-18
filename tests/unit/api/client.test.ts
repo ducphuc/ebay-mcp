@@ -3,7 +3,7 @@ import nock from 'nock';
 import { EbayApiClient } from '@/api/client.js';
 import { getEbayConfig } from '@/config/environment.js';
 import type { EbayConfig } from '@/types/ebay.js';
-import { apiLogger } from '@/utils/logger.js';
+import { apiLogger, setLogLevel } from '@/utils/logger.js';
 import process from 'node:process';
 import { Effect } from 'effect';
 
@@ -209,6 +209,43 @@ describe('EbayApiClient Unit Tests', () => {
   });
 
   describe('Server Error Retry Logic', () => {
+    it('does not retry a 5xx response when server retries are disabled', async () => {
+      let attempts = 0;
+      nock('https://api.sandbox.ebay.com')
+        .post('/sell/logistics/v1_beta/shipment/create_from_shipping_quote')
+        .reply(() => {
+          attempts += 1;
+          return [503, { error: 'Service unavailable' }];
+        });
+
+      await expect(
+        apiClient.post(
+          '/sell/logistics/v1_beta/shipment/create_from_shipping_quote',
+          { rateId: 'RATE-1' },
+          { retryServerErrors: false },
+        ),
+      ).rejects.toThrow();
+
+      expect(attempts).toBe(1);
+    });
+
+    it('preserves the independent one-time 401 retry when server retries are disabled', async () => {
+      nock('https://api.sandbox.ebay.com')
+        .post('/sell/logistics/v1_beta/shipping_quote')
+        .reply(401, { error: 'Expired token' })
+        .post('/sell/logistics/v1_beta/shipping_quote')
+        .reply(200, { shippingQuoteId: 'QUOTE-1' });
+
+      const result = await apiClient.post(
+        '/sell/logistics/v1_beta/shipping_quote',
+        {},
+        { retryServerErrors: false },
+      );
+
+      expect(result).toEqual({ shippingQuoteId: 'QUOTE-1' });
+      expect(mockOAuthClient.getAccessToken).toHaveBeenCalledTimes(3);
+    });
+
     it('retry on 500 errors with exponential backoff', async () => {
       const apiErrorSpy = vi.spyOn(apiLogger, 'error').mockImplementation(() => {});
 
@@ -303,6 +340,7 @@ describe('EbayApiClient Unit Tests', () => {
 
   describe('Rate Limit Header Tracking', () => {
     it('log rate limit headers when present', async () => {
+      setLogLevel('http');
       const apiHttpSpy = vi.spyOn(apiLogger, 'http').mockImplementation(() => {});
 
       nock('https://api.sandbox.ebay.com').get('/sell/inventory/v1/test').reply(
@@ -323,6 +361,7 @@ describe('EbayApiClient Unit Tests', () => {
       expect(rateLimitCalls.length).toBeGreaterThan(0);
 
       apiHttpSpy.mockRestore();
+      setLogLevel('info');
     });
 
     it('not log when rate limit headers are absent', async () => {
