@@ -15,6 +15,7 @@ import type {
   getShippingQuoteInputSchema,
   shipmentIdInputSchema,
 } from '@/schemas/logistics/logistics.js';
+import type { components } from '@/types/sell-apps/order-management/sellLogisticsV1Oas3.js';
 import type { InferEffectSchema } from '@/utils/effectSchemaTypes.js';
 import { Effect } from 'effect';
 
@@ -36,22 +37,18 @@ export type ShipmentIdInput = InferEffectSchema<typeof shipmentIdInputSchema>;
 export type DownloadLabelFileInput = InferEffectSchema<typeof downloadLabelFileInputSchema>;
 
 /**
- * ShippingQuote response DTO. Generated OpenAPI types are unavailable for this
- * spec (eBay blocks automated spec downloads), so the wire shape is passed
- * through untyped.
+ * Generated ShippingQuote response DTO.
  *
  * @see https://developer.ebay.com/api-docs/sell/logistics/resources/shipping_quote/methods/createShippingQuote
  */
-export type ShippingQuoteResponse = Record<string, unknown>;
+export type ShippingQuoteResponse = components['schemas']['ShippingQuote'];
 
 /**
- * Shipment response DTO. Generated OpenAPI types are unavailable for this
- * spec (eBay blocks automated spec downloads), so the wire shape is passed
- * through untyped.
+ * Generated Shipment response DTO.
  *
  * @see https://developer.ebay.com/api-docs/sell/logistics/resources/shipment/methods/createFromShippingQuote
  */
-export type ShipmentResponse = Record<string, unknown>;
+export type ShipmentResponse = components['schemas']['Shipment'];
 
 /** Base64 label payload assembled from the binary download_label_file response. */
 export interface DownloadedLabelFile {

@@ -16,6 +16,7 @@ import type {
   createImageFromUrlInputSchema,
   getImageInputSchema,
 } from '@/schemas/media/media.js';
+import type { components } from '@/types/sell-apps/listing-management/commerceMediaV1BetaOas3.js';
 import type { InferEffectSchema } from '@/utils/effectSchemaTypes.js';
 import { getErrorMessage } from '@/utils/errors.js';
 import { Effect } from 'effect';
@@ -30,18 +31,11 @@ export type CreateImageFromUrlInput = InferEffectSchema<typeof createImageFromUr
 export type GetImageInput = InferEffectSchema<typeof getImageInputSchema>;
 
 /**
- * Image response body returned by the Commerce Media API.
+ * Generated image response body returned by the Commerce Media API.
  *
  * @see https://developer.ebay.com/api-docs/commerce/media/resources/image/methods/getImage
  */
-export interface ImageResponse {
-  /** UTC expiration date for unused EPS images. */
-  expirationDate?: string;
-  /** EPS URL to use in Trading or Inventory API listing image fields. */
-  imageUrl?: string;
-  /** EPS URL for the maximum dimension version of the image. */
-  maxDimensionImageUrl?: string;
-}
+export type ImageResponse = components['schemas']['ImageResponse'];
 
 /** Image response extended with identifiers parsed from the `Location` response header. */
 export interface MediaImageResponse extends ImageResponse {
