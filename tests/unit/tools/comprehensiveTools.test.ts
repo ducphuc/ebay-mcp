@@ -1652,18 +1652,18 @@ describe('Comprehensive Tools Coverage', () => {
       });
     });
 
-    it('ebay_get_services', async () => {
+    it('ebay_edelivery_get_services', async () => {
       const mockResponse = { serviceList: { services: [] } };
       vi.mocked(mockApi.edelivery.getServices).mockReturnValue(Effect.succeed(mockResponse));
-      await executeTool(mockApi, 'ebay_get_services', { limit: 10 });
+      await executeTool(mockApi, 'ebay_edelivery_get_services', { limit: 10 });
       expect(mockApi.edelivery.getServices).toHaveBeenCalledWith({ limit: 10 });
     });
 
-    it('ebay_create_package', async () => {
+    it('ebay_edelivery_create_package', async () => {
       const mockResponse = { createPackageResult: { packageId: 'PKG123' } };
       const args = { body: { packageInfo: { packageWeight: 1000 } } };
       vi.mocked(mockApi.edelivery.createPackage).mockReturnValue(Effect.succeed(mockResponse));
-      await executeTool(mockApi, 'ebay_create_package', args);
+      await executeTool(mockApi, 'ebay_edelivery_create_package', args);
       expect(mockApi.edelivery.createPackage).toHaveBeenCalledWith(args);
     });
   });

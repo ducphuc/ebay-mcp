@@ -57,6 +57,57 @@ describe('tool registry', () => {
     );
   });
 
+  it('keeps the ebay_edelivery_* public naming contract for the eDelivery family', async () => {
+    const names = getToolDefinitions().map((definition) => definition.name);
+    const edeliveryNames = names.filter((name) => name.startsWith('ebay_edelivery_'));
+
+    expect(edeliveryNames).toHaveLength(27);
+    expect(names.filter((name) => name.startsWith('ebay_logistics_'))).toHaveLength(6);
+    expect(names).toHaveLength(304);
+    expect(
+      names.filter((name) =>
+        ['ebay_get_services', 'ebay_get_package', 'ebay_create_bundle'].includes(name),
+      ),
+    ).toEqual([]);
+
+    const api = {
+      edelivery: {
+        getServices: vi.fn().mockReturnValue(Effect.succeed({ serviceList: { services: [] } })),
+        getPackage: vi.fn().mockReturnValue(Effect.succeed({ packageInfo: {} })),
+      },
+    };
+
+    await executeTool(api as never, 'ebay_edelivery_get_services', { limit: 10 });
+    await executeTool(api as never, 'ebay_edelivery_get_package', { packageId: 'PKG123' });
+
+    expect(api.edelivery.getServices).toHaveBeenCalledWith({ limit: 10 });
+    expect(api.edelivery.getPackage).toHaveBeenCalledWith({ packageId: 'PKG123' });
+  });
+
+  it('advertises wire output contracts on every eDelivery tool that returns a body', () => {
+    // 204 No Content operations plus createComplaint (unspecified bare-object
+    // response) have no body shape to advertise, so they stay text-only.
+    const withoutContract = [
+      'ebay_edelivery_cancel_bundle',
+      'ebay_edelivery_cancel_package',
+      'ebay_edelivery_confirm_package',
+      'ebay_edelivery_create_complaint',
+      'ebay_edelivery_delete_package',
+    ];
+    const edeliveryEntries = getToolEntries().filter((entry) =>
+      entry.definition.name.startsWith('ebay_edelivery_'),
+    );
+
+    expect(
+      edeliveryEntries
+        .filter((entry) => entry.wireOutputSchema === undefined)
+        .map((entry) => entry.definition.name)
+        .sort((left, right) => left.localeCompare(right)),
+    ).toEqual(withoutContract);
+    expect(edeliveryEntries.filter((entry) => entry.wireOutputSchema)).toHaveLength(22);
+    expect(edeliveryEntries.some((entry) => entry.definition.outputSchema)).toBe(false);
+  });
+
   it('registers all nine Media and Logistics port tools with executable handlers', () => {
     const expectedNames = [
       'ebay_media_create_image_from_file',
