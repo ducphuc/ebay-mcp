@@ -401,10 +401,14 @@ describe('EbayOAuthClient', () => {
       originalCwd = process.cwd();
       tempDir = mkdtempSync(path.join(tmpdir(), 'ebay-oauth-persistence-'));
       process.chdir(tempDir);
+      // Point credential persistence at the temp .env; token writes resolve the
+      // same EBAY_ENV_PATH override that config loading uses.
+      vi.stubEnv('EBAY_ENV_PATH', path.join(tempDir, '.env'));
       writeFileSyncMock.mockClear();
     });
 
     afterEach(() => {
+      vi.unstubAllEnvs();
       process.chdir(originalCwd);
       rmSync(tempDir, { recursive: true, force: true });
       writeFileSyncMock.mockClear();

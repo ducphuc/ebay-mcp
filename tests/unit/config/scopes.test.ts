@@ -1,11 +1,68 @@
 import { describe, it, expect } from 'vitest';
 import {
+  getAvailableScopes,
   getDefaultScopes,
-  validateScopes,
   getOAuthAuthorizationUrl,
+  pruneRedundantReadonlyScopes,
+  validateScopes,
 } from '@/config/environment.js';
 
 describe('Scope Validation', () => {
+  describe('pruneRedundantReadonlyScopes', () => {
+    it('omits readonly scopes when the matching write scope is also requested', () => {
+      const productionScopes = getDefaultScopes('production');
+
+      const redundantReadonlyScopes = getAvailableScopes('production').filter(
+        (scope) =>
+          scope.endsWith('.readonly') &&
+          getAvailableScopes('production').includes(scope.slice(0, -'.readonly'.length)),
+      );
+
+      expect(redundantReadonlyScopes.length).toBeGreaterThan(0);
+      redundantReadonlyScopes.forEach((scope) => {
+        expect(productionScopes).not.toContain(scope);
+      });
+    });
+
+    it('retains readonly scopes that have no write equivalent', () => {
+      const productionScopes = getDefaultScopes('production');
+
+      expect(productionScopes).toContain(
+        'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
+      );
+      expect(productionScopes).toContain(
+        'https://api.ebay.com/oauth/api_scope/commerce.identity.readonly',
+      );
+    });
+
+    it('prunes only readonly scopes whose write scope is also present', () => {
+      const scopes = [
+        'https://api.ebay.com/oauth/api_scope/sell.marketing.readonly',
+        'https://api.ebay.com/oauth/api_scope/sell.marketing',
+        'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
+      ];
+
+      expect(pruneRedundantReadonlyScopes(scopes)).toEqual([
+        'https://api.ebay.com/oauth/api_scope/sell.marketing',
+        'https://api.ebay.com/oauth/api_scope/sell.analytics.readonly',
+      ]);
+    });
+
+    it('keeps every scope available for validation even when pruned from defaults', () => {
+      const availableScopes = getAvailableScopes('production');
+
+      expect(availableScopes).toContain(
+        'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly',
+      );
+      expect(
+        validateScopes(
+          ['https://api.ebay.com/oauth/api_scope/sell.inventory.readonly'],
+          'production',
+        ).warnings,
+      ).toEqual([]);
+    });
+  });
+
   describe('getDefaultScopes', () => {
     it('return production scopes for production environment', () => {
       const scopes = getDefaultScopes('production');

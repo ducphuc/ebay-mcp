@@ -99,6 +99,44 @@ describe('EbayApiClient Unit Tests', () => {
     });
   });
 
+  describe('requestRaw', () => {
+    it('preserves response headers and uses the client base URL by default', async () => {
+      nock('https://api.sandbox.ebay.com')
+        .post('/sell/inventory/v1/test')
+        .reply(201, { created: true }, { Location: 'https://api.sandbox.ebay.com/test/ID-1' });
+
+      const response = await apiClient.requestRaw('POST', '/sell/inventory/v1/test', {
+        name: 'test',
+      });
+
+      expect(response.status).toBe(201);
+      expect(response.data).toEqual({ created: true });
+      expect(response.headers.location).toBe('https://api.sandbox.ebay.com/test/ID-1');
+    });
+
+    it('sends the request against the per-request baseURL override', async () => {
+      nock('https://apim.sandbox.ebay.com')
+        .post('/commerce/media/v1_beta/image/create_image_from_url')
+        .reply(
+          201,
+          {},
+          { Location: 'https://apim.sandbox.ebay.com/commerce/media/v1_beta/image/IMAGE-1' },
+        );
+
+      const response = await apiClient.requestRaw(
+        'POST',
+        '/commerce/media/v1_beta/image/create_image_from_url',
+        { imageUrl: 'https://example.com/photo.png' },
+        { baseURL: 'https://apim.sandbox.ebay.com' },
+      );
+
+      expect(response.status).toBe(201);
+      expect(response.headers.location).toBe(
+        'https://apim.sandbox.ebay.com/commerce/media/v1_beta/image/IMAGE-1',
+      );
+    });
+  });
+
   describe('Default marketplace and language headers', () => {
     it('include EBAY_US and en-US headers by default', async () => {
       vi.stubEnv('EBAY_CLIENT_ID', 'test_client_id');

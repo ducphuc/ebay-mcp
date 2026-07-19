@@ -1,10 +1,9 @@
 import dotenv from 'dotenv';
 import stringify from 'dotenv-stringify';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { getEbayEnvPath } from '@/config/envPath.js';
 import type { EbayConfig, EbayUserToken, StoredTokenData } from '@/types/ebay.js';
 import { Data, Effect } from 'effect';
-import process from 'node:process';
 
 /**
  * Default lifetime for stored eBay user access tokens when eBay omits an expiry.
@@ -56,13 +55,15 @@ export interface CredentialStore {
 }
 
 /**
- * Credential store that merges token updates into the project .env file.
+ * Credential store that merges token updates into the resolved eBay .env file —
+ * the same file `config/environment.ts` loads, so refreshed tokens are read back
+ * on the next start.
  */
 export class DotEnvCredentialStore implements CredentialStore {
-  constructor(private readonly getEnvPath: () => string = () => join(process.cwd(), '.env')) {}
+  constructor(private readonly getEnvPath: () => string = getEbayEnvPath) {}
 
   /**
-   * Merges credential updates into the project `.env` file.
+   * Merges credential updates into the resolved eBay `.env` file.
    *
    * @param updates - Environment variable names and values to persist.
    * @returns An Effect that succeeds after `.env` is written.

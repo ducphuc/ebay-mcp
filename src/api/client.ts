@@ -4,7 +4,7 @@ import { RateLimitTracker } from '@/api/rateLimitTracker.js';
 import { getBaseUrl } from '@/config/environment.js';
 import type { EbayConfig } from '@/types/ebay.js';
 import { getErrorMessage } from '@/utils/errors.js';
-import { httpRequestEffect, isHttpError, type ResponseType } from '@/utils/http.js';
+import { httpRequestEffect, isHttpError, type ResponseType, type HttpResponse, type HttpError } from '@/utils/http.js';
 import { isRecord } from '@/utils/typeGuards.js';
 import { apiLogger, logRequest, logResponse, logErrorResponse } from '@/utils/logger.js';
 import { Effect } from 'effect';
@@ -22,6 +22,8 @@ export interface EbayRequestConfig {
   params?: Record<string, unknown>;
   /** Successful response decoder for non-JSON endpoints such as binary evidence files. */
   responseType?: ResponseType;
+  /** Base URL to use instead of the client's configured REST API base URL. */
+  baseURL?: string;
 }
 
 /** Normalized request options used by the client transport Effect. */
@@ -36,6 +38,8 @@ interface EbayRequestOptions {
   readonly responseType?: ResponseType;
   /** Whether `endpoint` was already an absolute URL. */
   readonly absolute?: boolean;
+  /** Base URL to use instead of the client's configured REST API base URL. */
+  readonly baseURL?: string;
 }
 
 /** Retry counters carried between recursive request attempts. */
@@ -156,6 +160,40 @@ export class EbayApiClient {
   }
 
   /**
+   * Execute a request and return the full response, including headers.
+   *
+   * Some REST endpoints, such as Commerce Media API create operations, return
+   * the newly created resource ID only in the `Location` response header. The
+   * standard verb helpers return response bodies, so callers that need headers
+   * use this method.
+   */
+  async requestRaw<T = unknown>(
+    method: string,
+    endpoint: string,
+    data?: unknown,
+    config?: EbayRequestConfig,
+  ): Promise<HttpResponse<T>> {
+    const baseUrl = config?.baseURL ?? this.baseUrl;
+    const url = `${baseUrl}${endpoint}`;
+    return await Effect.runPromise(
+      this.sendWithRetryRaw<T>(
+        method,
+        url,
+        {
+          data,
+          params: config?.params,
+          headers: config?.headers,
+          responseType: config?.responseType,
+        },
+        {
+          authRetried: false,
+          serverRetries: 0,
+        },
+      ),
+    );
+  }
+
+  /**
    * Build the request Effect that owns auth, logging, retry, and transport errors.
    */
   private requestEffect<T>(
@@ -163,7 +201,8 @@ export class EbayApiClient {
     endpoint: string,
     options: EbayRequestOptions,
   ): Effect.Effect<T, EbayClientRequestError> {
-    const url = options.absolute ? endpoint : `${this.baseUrl}${endpoint}`;
+    const baseUrl = options.baseURL ?? this.baseUrl;
+    const url = options.absolute ? endpoint : `${baseUrl}${endpoint}`;
     return this.sendWithRetry<T>(method, url, options, {
       authRetried: false,
       serverRetries: 0,
@@ -179,6 +218,20 @@ export class EbayApiClient {
     options: EbayRequestOptions,
     state: RequestRetryState,
   ): Effect.Effect<T, EbayClientRequestError> {
+    return this.sendWithRetryRaw<T>(method, url, options, state).pipe(
+      Effect.map((response) => response.data)
+    );
+  }
+
+  /**
+   * Execute one request attempt and return the full HttpResponse.
+   */
+  private sendWithRetryRaw<T>(
+    method: string,
+    url: string,
+    options: EbayRequestOptions,
+    state: RequestRetryState,
+  ): Effect.Effect<HttpResponse<T>, EbayClientRequestError> {
     return Effect.gen(this, function* () {
       // In proxy auth mode the upstream proxy supplies credentials, so the server
       // neither requires nor validates its own. See EBAY_MCP_DISABLE_AUTH_HEADER.
@@ -255,10 +308,10 @@ export class EbayApiClient {
             response.headers['x-ebay-c-ratelimit-limit'],
           );
 
-          return response.data;
+          return response;
         }),
         Effect.catchAll((error) =>
-          this.handleRequestFailure<T>(error, { method, url, options, state }),
+          this.handleRequestFailureRaw<T>(error, { method, url, options, state }),
         ),
       );
     });
@@ -267,10 +320,15 @@ export class EbayApiClient {
   /**
    * Convert an HTTP failure into a bounded retry or final request error.
    */
-  private handleRequestFailure<T>(
-    error: unknown,
-    context: RequestFailureContext,
-  ): Effect.Effect<T, EbayClientRequestError> {
+  private handleRequestFailureRaw<T>(
+    error: HttpError,
+    context: {
+      method: string;
+      url: string;
+      options: EbayRequestOptions;
+      state: RequestRetryState;
+    },
+  ): Effect.Effect<HttpResponse<T>, EbayClientRequestError> {
     const { method, url, options, state } = context;
 
     if (!isHttpError(error)) {
@@ -319,7 +377,7 @@ export class EbayApiClient {
           }),
           Effect.flatMap(() => {
             apiLogger.info('Token refreshed successfully. Retrying request...');
-            return this.sendWithRetry<T>(method, url, options, {
+            return this.sendWithRetryRaw<T>(method, url, options, {
               ...state,
               authRetried: true,
             });
@@ -372,7 +430,7 @@ export class EbayApiClient {
 
       return sleep(delayMs).pipe(
         Effect.flatMap(() =>
-          this.sendWithRetry<T>(method, url, options, {
+          this.sendWithRetryRaw<T>(method, url, options, {
             ...state,
             serverRetries: nextServerRetries,
           }),
@@ -416,6 +474,7 @@ export class EbayApiClient {
       params: { ...params, ...config?.params },
       headers: config?.headers,
       responseType: config?.responseType,
+      baseURL: config?.baseURL,
     });
   }
 
@@ -432,6 +491,7 @@ export class EbayApiClient {
       params: config?.params,
       headers: config?.headers,
       responseType: config?.responseType,
+      baseURL: config?.baseURL,
     });
   }
 
@@ -444,6 +504,7 @@ export class EbayApiClient {
       params: config?.params,
       headers: config?.headers,
       responseType: config?.responseType,
+      baseURL: config?.baseURL,
     });
   }
 
@@ -455,6 +516,7 @@ export class EbayApiClient {
       params: config?.params,
       headers: config?.headers,
       responseType: config?.responseType,
+      baseURL: config?.baseURL,
     });
   }
 

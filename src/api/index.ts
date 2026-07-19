@@ -18,6 +18,8 @@ import { EDeliveryApi } from '@/api/other/edelivery.js';
 import { IdentityApi } from '@/api/other/identity.js';
 import { TranslationApi } from '@/api/other/translation.js';
 import { VeroApi } from '@/api/other/vero.js';
+import { MediaApi } from '@/api/media/media.js';
+import { LogisticsApi } from '@/api/logistics/logistics.js';
 import { TradingApiClient } from '@/api/clientTrading.js';
 import { TradingApi } from '@/api/trading/trading.js';
 import type { EbayOAuthError } from '@/auth/oauth.js';
@@ -53,6 +55,9 @@ export class EbaySellerApi {
   public developer: DeveloperApi;
   public trading: TradingApi;
 
+  public media: MediaApi;
+  public logistics: LogisticsApi;
+
   constructor(config: EbayConfig) {
     this.config = config;
     this.client = new EbayApiClient(config);
@@ -77,6 +82,8 @@ export class EbaySellerApi {
     this.translation = new TranslationApi(this.client);
     this.edelivery = new EDeliveryApi(this.client);
     this.developer = new DeveloperApi(this.client);
+    this.media = new MediaApi(this.client, config.environment, config.apiBaseUrl);
+    this.logistics = new LogisticsApi(this.client);
     const tradingClient = new TradingApiClient(this.client);
     this.trading = new TradingApi(tradingClient);
   }
@@ -159,6 +166,8 @@ export * from '@/api/other/edelivery.js';
 export * from '@/api/other/identity.js';
 export * from '@/api/other/translation.js';
 export * from '@/api/other/vero.js';
+export * from '@/api/media/media.js';
+export * from '@/api/logistics/logistics.js';
 export * from '@/api/developer/developer.js';
 export * from '@/api/trading/trading.js';
 export * from '@/api/clientTrading.js';

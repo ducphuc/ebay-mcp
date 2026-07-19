@@ -51,6 +51,12 @@ export * from './taxonomy/taxonomy.js';
 // Other APIs (Identity, Compliance, VERO, Translation, eDelivery)
 export * from './other/otherApis.js';
 
+// Media API
+export * from './media/media.js';
+
+// Logistics API
+export * from './logistics/logistics.js';
+
 // Re-export commonly used schema converters
 import { getAccountManagementJsonSchemas } from './account-management/account.js';
 import { getInventoryManagementJsonSchemas } from './inventory-management/inventory.js';

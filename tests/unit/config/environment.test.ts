@@ -3,6 +3,7 @@ import {
   getEbayConfig,
   getBaseUrl,
   getIdentityBaseUrl,
+  getMediaBaseUrl,
   getProxyAuthConfig,
   validateEnvironmentConfig,
 } from '@/config/environment.js';

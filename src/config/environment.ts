@@ -2,6 +2,7 @@ import { config } from 'dotenv';
 import { existsSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { getEbayEnvPath } from '@/config/envPath.js';
 import type { EbayConfig } from '@/types/ebay.js';
 import type { Implementation } from '@modelcontextprotocol/sdk/types.js';
 import { getToolGatingConfigError } from '@/config/toolFamilies.js';
@@ -14,10 +15,12 @@ import process from 'node:process';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load .env from the package root (two levels up from src/config/), not process.cwd().
-// MCP servers inherit cwd from the host (e.g. Claude Code's project dir), so
-// process.cwd() may point to an unrelated project with a different .env.
-config({ path: join(__dirname, '../../.env'), quiet: true });
+// Load .env from the resolved eBay env path (EBAY_ENV_PATH override or the package
+// root), not process.cwd(). MCP servers inherit cwd from the host (e.g. Claude
+// Code's project dir), so process.cwd() may point to an unrelated project with a
+// different .env. Token persistence resolves the same path so refreshed tokens
+// land in the file that is loaded here.
+config({ path: getEbayEnvPath(), quiet: true });
 
 const writeConfigDiagnostic = (message: string): void => {
   process.stderr.write(`[eBay MCP] ${message}\n`);
@@ -142,22 +145,62 @@ const getProductionScopes = (): string[] => loadScopes('production_scopes.json',
 const getSandboxScopes = (): string[] => loadScopes('sandbox_scopes.json', 'sandbox');
 
 /**
- * Gets default OAuth scopes for the specified eBay environment.
+ * Gets every known OAuth scope for the specified eBay environment.
  *
  * @param environment eBay environment whose checked-in scope table should be loaded.
  * @returns Unique OAuth scope URIs for the selected environment.
  * @example
  * ```ts
- * const scopes = getDefaultScopes('production');
+ * const scopes = getAvailableScopes('production');
  * ```
  */
-export const getDefaultScopes = (environment: EbayEnvironment): string[] => {
+export const getAvailableScopes = (environment: EbayEnvironment): string[] => {
   if (environment === 'production') {
     return getProductionScopes();
   }
 
   return getSandboxScopes();
 };
+
+/**
+ * Drops readonly scopes whose view-and-manage counterpart is also present.
+ *
+ * eBay documents these as redundant pairs: requesting `sell.inventory` already
+ * covers the read access represented by `sell.inventory.readonly`, so requesting
+ * both only inflates the consent screen.
+ *
+ * @param scopes OAuth scope URIs to filter.
+ * @returns Scopes with redundant `.readonly` variants removed.
+ * @example
+ * ```ts
+ * const scopes = pruneRedundantReadonlyScopes(getAvailableScopes('production'));
+ * ```
+ */
+export const pruneRedundantReadonlyScopes = (scopes: string[]): string[] => {
+  const scopeSet = new Set(scopes);
+
+  return scopes.filter((scope) => {
+    if (!scope.endsWith('.readonly')) {
+      return true;
+    }
+
+    const writeScope = scope.slice(0, -'.readonly'.length);
+    return !scopeSet.has(writeScope);
+  });
+};
+
+/**
+ * Gets the default OAuth scopes requested for the specified eBay environment.
+ *
+ * @param environment eBay environment whose checked-in scope table should be loaded.
+ * @returns Available scope URIs with redundant readonly variants pruned.
+ * @example
+ * ```ts
+ * const scopes = getDefaultScopes('production');
+ * ```
+ */
+export const getDefaultScopes = (environment: EbayEnvironment): string[] =>
+  pruneRedundantReadonlyScopes(getAvailableScopes(environment));
 
 /**
  * Validates requested scopes against the selected eBay environment.
@@ -174,7 +217,7 @@ export const validateScopes = (
   scopes: string[],
   environment: EbayEnvironment,
 ): ScopeValidationResult => {
-  const validScopes = getDefaultScopes(environment);
+  const validScopes = getAvailableScopes(environment);
   const validScopeSet = new Set(validScopes);
   const warnings: string[] = [];
   const requestedValidScopes: string[] = [];
@@ -185,7 +228,7 @@ export const validateScopes = (
     } else {
       // Check if this is a scope for the other environment
       const otherEnvironment = environment === 'production' ? 'sandbox' : 'production';
-      const otherScopes = getDefaultScopes(otherEnvironment);
+      const otherScopes = getAvailableScopes(otherEnvironment);
 
       if (otherScopes.includes(scope)) {
         warnings.push(
@@ -309,6 +352,24 @@ export const getEbayConfig = (): EbayConfig => {
     apiBaseUrl,
     disableAuthHeader,
   };
+};
+
+/**
+ * Get base URL for Commerce Media API image operations (uses apim subdomain).
+ *
+ * @param environment eBay environment used when no override is configured.
+ * @param overrideBaseUrl Base URL override from `EBAY_MCP_API_BASE_URL`.
+ * @returns Media API base URL for direct eBay or proxy traffic.
+ * @example
+ * ```ts
+ * const mediaBaseUrl = getMediaBaseUrl('production');
+ * ```
+ */
+export const getMediaBaseUrl = (environment: EbayEnvironment, overrideBaseUrl?: string): string => {
+  if (overrideBaseUrl) {
+    return overrideBaseUrl;
+  }
+  return environment === 'production' ? 'https://apim.ebay.com' : 'https://apim.sandbox.ebay.com';
 };
 
 /**

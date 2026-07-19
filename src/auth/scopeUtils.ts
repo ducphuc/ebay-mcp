@@ -2,7 +2,7 @@
  * Utility functions for working with eBay OAuth scopes
  */
 
-import { getDefaultScopes, validateScopes } from '@/config/environment.js';
+import { getAvailableScopes, getDefaultScopes, validateScopes } from '@/config/environment.js';
 
 /**
  * Result of scope validation
@@ -61,7 +61,7 @@ export const validateScopesDetailed = (
   environment: 'production' | 'sandbox',
 ): ScopeValidationResult => {
   const validation = validateScopes(scopes, environment);
-  const validScopeSet = new Set(getDefaultScopes(environment));
+  const validScopeSet = new Set(getAvailableScopes(environment));
 
   const validScopes: string[] = [];
   const invalidScopes: string[] = [];
@@ -219,6 +219,55 @@ export const getRequiredScopesForTool = (toolName: string): ScopeRequirement | n
       requiredScopes: ['https://api.ebay.com/oauth/api_scope/commerce.identity.readonly'],
       minimumScope: 'https://api.ebay.com/oauth/api_scope/commerce.identity.readonly',
       description: 'Requires read access to user identity',
+    },
+
+    // Logistics Tools
+    ebay_logistics_create_shipping_quote: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.logistics'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.logistics',
+      description: 'Requires access to logistics shipping quotes and labels',
+    },
+    ebay_logistics_get_shipping_quote: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.logistics'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.logistics',
+      description: 'Requires access to logistics shipping quotes and labels',
+    },
+    ebay_logistics_create_from_shipping_quote: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.logistics'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.logistics',
+      description: 'Requires access to logistics shipping quotes and labels',
+    },
+    ebay_logistics_get_shipment: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.logistics'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.logistics',
+      description: 'Requires access to logistics shipping quotes and labels',
+    },
+    ebay_logistics_cancel_shipment: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.logistics'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.logistics',
+      description: 'Requires access to logistics shipping quotes and labels',
+    },
+    ebay_logistics_download_label_file: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.logistics'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.logistics',
+      description: 'Requires access to logistics shipping quotes and labels',
+    },
+
+    // Media Tools
+    ebay_media_create_image_from_file: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.inventory'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.inventory',
+      description: 'Requires write access to inventory for EPS image uploads',
+    },
+    ebay_media_create_image_from_url: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.inventory'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.inventory',
+      description: 'Requires write access to inventory for EPS image uploads',
+    },
+    ebay_media_get_image: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.inventory'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.inventory',
+      description: 'Requires write access to inventory for EPS image uploads',
     },
   };
 
