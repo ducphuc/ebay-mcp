@@ -139,4 +139,18 @@ describe('tool registry', () => {
       ].sort(),
     );
   });
+
+  it('describes the API-wide Limited Release gate on every Logistics tool', () => {
+    const logisticsDefinitions = getToolDefinitions().filter((definition) =>
+      definition.name.startsWith('ebay_logistics_'),
+    );
+
+    expect(logisticsDefinitions).toHaveLength(6);
+    for (const definition of logisticsDefinitions) {
+      expect(definition.description).toContain('Limited Release');
+      expect(definition.description).toContain('sell.logistics');
+      expect(definition.description).toContain('eBay-approved');
+      expect(definition.description).not.toContain('not similarly gated');
+    }
+  });
 });

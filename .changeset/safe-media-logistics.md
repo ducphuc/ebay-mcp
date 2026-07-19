@@ -12,4 +12,6 @@ Documentation and generated skill claims now reflect the live 304-tool registry 
 
 Generated skills and operator documentation now cover secure Media staging, the gated Logistics quote-to-PDF workflow, eDelivery disambiguation, and readback-before-retry handling for ambiguous non-idempotent writes.
 
+All six Logistics tools now state the same Limited Release application-approval and `sell.logistics` scope requirement; no read method is described as exempt from the API-wide gate.
+
 The port preserves the established `ebay_edelivery_*` public tool names for the eDelivery International Shipping family, keeping them distinct from the separate `ebay_logistics_*` tools. The 22 eDelivery tools that return response bodies now advertise executable MCP output contracts (spec-accurate envelopes with passthrough for undocumented fields) and emit `structuredContent`; the four 204 No Content operations and `createComplaint` intentionally remain text-only because eBay defines no response shape for them.
