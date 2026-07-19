@@ -27,6 +27,7 @@ const FAMILY_BLURBS: Record<string, string> = {
   media: 'Secure local/HTTPS image upload to eBay Picture Services and image lookup',
   logistics:
     'Limited Release domestic-US USPS quotes, label purchase/cancellation, and PDF download',
+  finances: 'Read-only seller payouts, transactions, transfers, and funds summaries',
 };
 
 /**

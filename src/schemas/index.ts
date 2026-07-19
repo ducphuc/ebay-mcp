@@ -57,6 +57,9 @@ export * from './media/media.js';
 // Logistics API
 export * from './logistics/logistics.js';
 
+// Finances API
+export * from './finances/finances.js';
+
 // Re-export commonly used schema converters
 import { getAccountManagementJsonSchemas } from './account-management/account.js';
 import { getInventoryManagementJsonSchemas } from './inventory-management/inventory.js';

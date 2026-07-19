@@ -186,6 +186,32 @@ describe('EbayApiClient Unit Tests', () => {
       const result = await customClient.get('/sell/inventory/v1/test');
       expect(result).toEqual({ success: true });
     });
+
+    it('still injects default headers when a per-request baseURL is supplied', async () => {
+      const marketplaceClient = new EbayApiClient({
+        clientId: 'test_client_id',
+        clientSecret: 'test_client_secret',
+        environment: 'sandbox',
+        redirectUri: 'https://localhost/callback',
+        marketplaceId: 'EBAY_US',
+      });
+      await Effect.runPromise(marketplaceClient.initialize());
+
+      nock('https://proxy.internal', {
+        reqheaders: {
+          'x-ebay-c-marketplace-id': 'EBAY_US',
+        },
+      })
+        .get('/sell/finances/v1/seller_funds_summary')
+        .reply(200, { totalFunds: {} });
+
+      const result = await marketplaceClient.get(
+        '/sell/finances/v1/seller_funds_summary',
+        undefined,
+        { baseURL: 'https://proxy.internal' },
+      );
+      expect(result).toEqual({ totalFunds: {} });
+    });
   });
 
   describe('429 Rate Limit Errors', () => {

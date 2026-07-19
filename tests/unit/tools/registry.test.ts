@@ -63,7 +63,7 @@ describe('tool registry', () => {
 
     expect(edeliveryNames).toHaveLength(27);
     expect(names.filter((name) => name.startsWith('ebay_logistics_'))).toHaveLength(6);
-    expect(names).toHaveLength(304);
+    expect(names).toHaveLength(315);
     expect(
       names.filter((name) =>
         ['ebay_get_services', 'ebay_get_package', 'ebay_create_bundle'].includes(name),
@@ -138,6 +138,47 @@ describe('tool registry', () => {
         'ebay_logistics_download_label_file',
       ].sort(),
     );
+  });
+
+  it('registers all eleven Finances tools with executable handlers and scope guidance', async () => {
+    const expectedNames = [
+      'ebay_finances_get_transactions',
+      'ebay_finances_get_transaction_summary',
+      'ebay_finances_get_payouts',
+      'ebay_finances_get_payout',
+      'ebay_finances_get_payout_summary',
+      'ebay_finances_get_seller_funds_summary',
+      'ebay_finances_get_transfer',
+      'ebay_finances_get_order_earnings',
+      'ebay_finances_get_order_earnings_by_id',
+      'ebay_finances_get_order_earnings_summary',
+      'ebay_finances_get_billing_activities',
+    ];
+    const financesEntries = getToolEntries().filter((entry) =>
+      entry.definition.name.startsWith('ebay_finances_'),
+    );
+
+    expect(financesEntries.map((entry) => entry.definition.name).sort()).toEqual(
+      expectedNames.sort(),
+    );
+    expect(financesEntries.every((entry) => typeof entry.handler === 'function')).toBe(true);
+    for (const entry of financesEntries) {
+      expect(entry.definition.description).toContain('sell.finances');
+      expect(entry.definition.annotations?.readOnlyHint).toBe(true);
+    }
+
+    const api = {
+      finances: {
+        getPayouts: vi.fn().mockReturnValue(Effect.succeed({ payouts: [] })),
+        getSellerFundsSummary: vi.fn().mockReturnValue(Effect.succeed({ totalFunds: {} })),
+      },
+    };
+
+    await executeTool(api as never, 'ebay_finances_get_payouts', { limit: 5 });
+    await executeTool(api as never, 'ebay_finances_get_seller_funds_summary', {});
+
+    expect(api.finances.getPayouts).toHaveBeenCalledWith({ limit: 5 });
+    expect(api.finances.getSellerFundsSummary).toHaveBeenCalledOnce();
   });
 
   it('describes the API-wide Limited Release gate on every Logistics tool', () => {

@@ -397,6 +397,26 @@ export const getBaseUrl = (environment: EbayEnvironment, overrideBaseUrl?: strin
 };
 
 /**
+ * Get base URL for the Sell Finances API.
+ *
+ * The Finances spec's `servers` array lists the standard `api` hosts, so this
+ * resolves to the same hosts as {@link getBaseUrl}; a dedicated helper keeps the
+ * per-API convention shared with {@link getMediaBaseUrl} and {@link getIdentityBaseUrl}.
+ *
+ * @param environment eBay environment used when no override is configured.
+ * @param overrideBaseUrl Base URL override from `EBAY_MCP_API_BASE_URL`.
+ * @returns Finances API base URL for direct eBay or proxy traffic.
+ * @example
+ * ```ts
+ * const financesBaseUrl = getFinancesBaseUrl('production');
+ * ```
+ */
+export const getFinancesBaseUrl = (
+  environment: EbayEnvironment,
+  overrideBaseUrl?: string,
+): string => getBaseUrl(environment, overrideBaseUrl);
+
+/**
  * Get base URL for Identity API (uses apiz subdomain).
  *
  * @param environment eBay environment used when no override is configured.

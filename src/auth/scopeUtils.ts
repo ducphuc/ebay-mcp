@@ -269,6 +269,63 @@ export const getRequiredScopesForTool = (toolName: string): ScopeRequirement | n
       minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.inventory',
       description: 'Requires write access to inventory for EPS image uploads',
     },
+
+    // Finances Tools
+    ebay_finances_get_transactions: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_transaction_summary: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_payouts: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_payout: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_payout_summary: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_seller_funds_summary: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_transfer: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_order_earnings: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_order_earnings_by_id: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_order_earnings_summary: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
+    ebay_finances_get_billing_activities: {
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
+      description: 'Requires access to seller payout, transaction, and funds data',
+    },
   };
 
   return scopeMap[toolName] || null;

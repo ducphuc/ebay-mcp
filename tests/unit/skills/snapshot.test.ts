@@ -11,7 +11,7 @@ describe('skills registry snapshot', () => {
   it('lists every family with positive counts that sum to the total', () => {
     const snapshot = buildRegistrySnapshot();
 
-    expect(snapshot.families).toHaveLength(15);
+    expect(snapshot.families).toHaveLength(16);
     for (const family of snapshot.families) {
       expect(family.count).toBeGreaterThan(0);
       expect(family.title.length).toBeGreaterThan(0);
@@ -30,5 +30,6 @@ describe('skills registry snapshot', () => {
     expect(families.get('media')?.blurb).toContain('Picture Services');
     expect(families.get('logistics')?.blurb).toContain('Limited Release');
     expect(families.get('other')?.blurb).toContain('eDelivery');
+    expect(families.get('finances')?.blurb).toContain('payouts');
   });
 });
