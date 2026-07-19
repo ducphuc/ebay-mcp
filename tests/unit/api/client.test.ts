@@ -152,6 +152,7 @@ describe('EbayApiClient Unit Tests', () => {
         reqheaders: {
           'x-ebay-c-marketplace-id': 'EBAY_US',
           'content-language': 'en-US',
+          'accept-language': 'en-US',
         },
       })
         .get('/sell/inventory/v1/test')
@@ -176,6 +177,7 @@ describe('EbayApiClient Unit Tests', () => {
         reqheaders: {
           'x-ebay-c-marketplace-id': 'EBAY_DE',
           'content-language': 'de-DE',
+          'accept-language': 'de-DE',
         },
       })
         .get('/sell/inventory/v1/test')

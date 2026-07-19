@@ -108,6 +108,11 @@ export class EbayApiClient {
 
     if (this.config.contentLanguage) {
       headers['Content-Language'] = this.config.contentLanguage;
+      // Node's native fetch injects `Accept-Language: *` when the caller omits
+      // the header. The Sell Inventory API rejects that wildcard (25709), while
+      // the pre-fetch Axios transport omitted Accept-Language entirely. Send the
+      // configured locale explicitly to preserve valid Inventory read behavior.
+      headers['Accept-Language'] = this.config.contentLanguage;
     }
 
     if (this.config.marketplaceId) {
