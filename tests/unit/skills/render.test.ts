@@ -41,6 +41,16 @@ describe('skill rendering', () => {
     expect(renderCodexSection(usingDoc)).toMatch(/\d+ tools/);
   });
 
+  it('renders Media, Logistics, and safe retry guidance', () => {
+    const section = renderCodexSection(usingDoc);
+
+    expect(section).toContain('EBAY_MCP_MEDIA_ROOT');
+    expect(section).toContain('ebay_media_create_image_from_file');
+    expect(section).toContain('ebay_logistics_create_shipping_quote');
+    expect(section).toContain('ebay_edelivery_*');
+    expect(section).toContain('Do not blindly repeat ambiguous writes');
+  });
+
   it('dispatches renderSkill by provider', () => {
     expect(renderSkill('claude', usingDoc, 'using')).toBe(renderClaudeSkill(usingDoc, 'using'));
     expect(renderSkill('cursor', usingDoc, 'using')).toBe(renderCursorRule(usingDoc, 'using'));

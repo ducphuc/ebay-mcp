@@ -249,8 +249,10 @@ Automatisch konfiguriert durch `npm run setup`. Erfordert Node.js ≥ 20 und das
 | [Trading (Legacy-XML)](src/tools/categories/trading.ts) | Festpreisangebote erstellen, überarbeiten, neu einstellen und beenden |
 | [Developer](src/tools/categories/developer.ts) | Ratenlimits, Signaturschlüssel, Client-Registrierung |
 | [Token Management](src/tools/categories/tokenManagement.ts) | OAuth-URL-Generierung und Token-Verwaltung |
+| [Media](src/tools/categories/media.ts) | Sichere lokale/HTTPS-Bild-Uploads zu eBay Picture Services und Bildabruf |
+| [Logistics](src/tools/categories/logistics.ts) | Limited-Release-Angebote und USPS-Versandetiketten für Inlandsversand in den USA |
 
-**Beispiel-Tools:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_get_campaigns`, `ebay_get_oauth_url`.
+**Beispiel-Tools:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_media_create_image_from_file`, `ebay_logistics_create_shipping_quote`, `ebay_get_oauth_url`.
 
 Den vollständigen maschinenlesbaren Index findest du in [llms.txt](llms.txt).
 

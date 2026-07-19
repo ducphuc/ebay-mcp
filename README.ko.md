@@ -249,8 +249,10 @@ EBAY_MCP_UI=on                      # 대화형 MCP Apps 보기(베타); 일반 
 | [Trading(레거시 XML)](src/tools/categories/trading.ts) | 고정 가격 리스팅 생성, 수정, 재등록, 종료 |
 | [Developer](src/tools/categories/developer.ts) | 속도 제한, 서명 키, 클라이언트 등록 |
 | [Token Management](src/tools/categories/tokenManagement.ts) | OAuth URL 생성 및 토큰 관리 |
+| [Media](src/tools/categories/media.ts) | 로컬/HTTPS 이미지를 eBay Picture Services에 안전하게 업로드하고 이미지 조회 |
+| [Logistics](src/tools/categories/logistics.ts) | Limited Release 미국 국내 USPS 견적 및 라벨 처리 |
 
-**예시 도구:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_get_campaigns`, `ebay_get_oauth_url`.
+**예시 도구:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_media_create_image_from_file`, `ebay_logistics_create_shipping_quote`, `ebay_get_oauth_url`.
 
 전체 기계 판독 인덱스는 [llms.txt](llms.txt)를 참조하세요.
 

@@ -249,8 +249,10 @@ EBAY_MCP_UI=on                      # интерактивные предста�
 | [Trading (устаревший XML)](src/tools/categories/trading.ts) | Создание, изменение, повторное размещение и завершение объявлений с фиксированной ценой |
 | [Developer](src/tools/categories/developer.ts) | Лимиты запросов, ключи подписи, регистрация клиентов |
 | [Token Management](src/tools/categories/tokenManagement.ts) | Генерация URL OAuth и управление токенами |
+| [Media](src/tools/categories/media.ts) | Безопасная загрузка локальных/HTTPS-изображений в eBay Picture Services и получение изображений |
+| [Logistics](src/tools/categories/logistics.ts) | Котировки и этикетки USPS для внутренних отправлений по США с доступом Limited Release |
 
-**Примеры инструментов:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_get_campaigns`, `ebay_get_oauth_url`.
+**Примеры инструментов:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_media_create_image_from_file`, `ebay_logistics_create_shipping_quote`, `ebay_get_oauth_url`.
 
 Полный машиночитаемый индекс см. в [llms.txt](llms.txt).
 

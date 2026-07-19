@@ -249,8 +249,10 @@ Autoconfigurados pelo `npm run setup`. Requer Node.js ≥ 20 e o protocolo MCP 1
 | [Trading (XML legado)](src/tools/categories/trading.ts) | Criar, revisar, republicar e encerrar anúncios de preço fixo |
 | [Developer](src/tools/categories/developer.ts) | Limites de taxa, chaves de assinatura, registro de clientes |
 | [Token Management](src/tools/categories/tokenManagement.ts) | Geração de URL de OAuth e gestão de tokens |
+| [Media](src/tools/categories/media.ts) | Upload seguro de imagens locais/HTTPS para o eBay Picture Services e consulta de imagens |
+| [Logistics](src/tools/categories/logistics.ts) | Cotações e etiquetas USPS domésticas dos EUA com acesso Limited Release |
 
-**Ferramentas de exemplo:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_get_campaigns`, `ebay_get_oauth_url`.
+**Ferramentas de exemplo:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_media_create_image_from_file`, `ebay_logistics_create_shipping_quote`, `ebay_get_oauth_url`.
 
 Para o índice completo legível por máquina, consulte [llms.txt](llms.txt).
 

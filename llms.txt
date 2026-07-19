@@ -9,6 +9,7 @@ Built with TypeScript/Node.js, the MCP SDK, Effect-backed validation with a Zod-
 - [README](https://github.com/YosefHayim/ebay-mcp/blob/main/README.md): Full setup guide, capability map, configuration reference, comparison table, available tools, safety scope, and usage examples
 - [.env.example](https://github.com/YosefHayim/ebay-mcp/blob/main/.env.example): All supported environment variables with descriptions
 - [Configuration Guide](https://github.com/YosefHayim/ebay-mcp/blob/main/docs/auth/CONFIGURATION.md): Every environment variable, OAuth step, and scope
+- [Media and Logistics Contracts](https://github.com/YosefHayim/ebay-mcp/blob/main/docs/media-logistics-contracts.md): Exposed tools, security boundaries, OAuth gates, output contracts, and safe retry/readback workflows
 - [OAuth Quick Reference](https://github.com/YosefHayim/ebay-mcp/blob/main/docs/auth/OAUTH_QUICK_REFERENCE.md): Scopes, troubleshooting, and examples
 - [CHANGELOG.md](https://github.com/YosefHayim/ebay-mcp/blob/main/CHANGELOG.md): Full version history
 
@@ -24,11 +25,13 @@ Tool definitions and handlers are co-located per family in `src/tools/categories
 - [Communication](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/communication.ts): Buyer–seller messaging, negotiations, notifications, feedback
 - [Taxonomy](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/taxonomy.ts): Category trees, item aspects, item conditions
 - [Metadata](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/metadata.ts): Return policies, sales-tax jurisdictions, automotive compatibility
-- [Other](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/other.ts): Identity, compliance, VeRO, translation, and international shipping support APIs
+- [Other](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/other.ts): Identity, compliance, VeRO, translation, and eDelivery International Shipping for eligible Greater-China sellers
 - [Developer](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/developer.ts): Rate limits, signing keys, client registration
 - [Trading](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/trading.ts): Legacy XML API — fixed-price listing management (create, revise, relist, end)
 - [Token Management](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/tokenManagement.ts): OAuth token retrieval, refresh, and diagnostics
 - [Connector](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/connector.ts): ChatGPT connector search/fetch tools over the eBay MCP catalogue
+- [Media](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/media.ts): Secure local/HTTPS image upload to eBay Picture Services and image lookup
+- [Logistics](https://github.com/YosefHayim/ebay-mcp/blob/main/src/tools/categories/logistics.ts): Limited Release domestic-US USPS quotes, label purchase/cancellation, and PDF download
 
 ## Features and Runtime Behavior
 
@@ -37,6 +40,8 @@ Tool definitions and handlers are co-located per family in `src/tools/categories
 - [Interactive UI / MCP Apps](https://github.com/YosefHayim/ebay-mcp/blob/main/README.md#interactive-ui-mcp-apps): Optional read-only table, card, chart, and stat views for capable hosts
 - [Logging](https://github.com/YosefHayim/ebay-mcp/blob/main/docs/logging.md): Runtime logging rules, stderr behavior, and MCP-safe output guidance
 - [Troubleshooting](https://github.com/YosefHayim/ebay-mcp/blob/main/docs/troubleshooting.md): Common setup, auth, client, and API failure modes
+- Media uploads require an absolute `EBAY_MCP_MEDIA_ROOT` for local files; only three image tools are exposed from the broader Media OpenAPI surface. Logistics requires app approval plus opt-in `sell.logistics` setup.
+- Do not blindly repeat ambiguous Media uploads or Logistics create/cancel calls: automatic 5xx retries are disabled for these non-idempotent operations, so read back state first.
 
 ## Security & Compliance
 

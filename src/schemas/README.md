@@ -23,7 +23,12 @@ src/schemas/
 ├── taxonomy/             # Categories, suggestions, aspects
 │   └── taxonomy.ts
 ├── other/                # Identity, compliance, VERO, translation, eDelivery
-│   └── otherApis.ts
+│   ├── otherApis.ts
+│   └── edelivery.ts      # eDelivery executable output contracts
+├── media/                # Commerce Media image tool inputs/outputs
+│   └── media.ts
+├── logistics/            # Sell Logistics request and label contracts
+│   └── logistics.ts
 ├── index.ts              # Central export point
 └── README.md             # This file
 ```
@@ -33,7 +38,7 @@ src/schemas/
 The schemas in this directory serve multiple purposes:
 
 1. **Input Validation**: Decode request parameters through Effect before sending to eBay APIs
-2. **Output Validation**: Ensure API responses match expected structures
+2. **Executable Output Contracts**: Selected response-bearing tools advertise `wireOutputSchema` through MCP and validate `structuredContent`
 3. **Type Safety**: Provide TypeScript types for compile-time checking
 4. **JSON Schema Generation**: Convert the Zod-compatible adapter carrier to JSON Schema for MCP tools
 5. **Documentation**: Self-documenting code with schema descriptions
@@ -94,13 +99,15 @@ import { getInventoryManagementJsonSchemas } from '@/schemas';
 
 const schemas = getInventoryManagementJsonSchemas();
 
-// Use in MCP tool definition
-const tool = {
+// Modern tool definitions attach the schema carrier directly. Only
+// wireOutputSchema is advertised and executed by the MCP runtime.
+defineTool({
   name: 'ebay_get_inventory_item',
   description: 'Get a specific inventory item by SKU',
-  inputSchema: schemas.getInventoryItemInput,
-  outputSchema: schemas.getInventoryItemOutput,
-};
+  inputSchema: getInventoryItemInputSchema.shape,
+  wireOutputSchema: getInventoryItemOutputSchema,
+  handler,
+});
 ```
 
 ## 📚 Available Schema Categories
@@ -280,6 +287,27 @@ Schemas for identity, compliance, VERO, translation, and international shipping.
 - `createPackageInputSchema` / `createPackageOutputSchema`
 - `getTrackingInputSchema` / `getTrackingOutputSchema`
 
+### 10. Commerce Media (`media/media.ts`)
+
+Schemas for the three currently exposed EPS image tools: secure local-file upload, public HTTPS URL upload, and image lookup. The broader cached Media specification also contains video and document operations; those are not registered MCP tools.
+
+**Key Schemas:**
+
+- `createImageFromFileInputSchema`
+- `createImageFromUrlInputSchema`
+- `getImageInputSchema`
+- `mediaImageOutputSchema`
+
+### 11. Sell Logistics (`logistics/logistics.ts`)
+
+Schemas for the Limited Release domestic-US USPS quote and label flow. Request schemas cover quotes, create-from-quote, shipment IDs, and PDF label download. `downloadedLabelOutputSchema` is the executable base64-PDF wire contract.
+
+**Key Schemas:**
+
+- `createShippingQuoteRequestSchema` / `createShippingQuoteInputSchema`
+- `createShipmentFromQuoteRequestSchema` / `createFromShippingQuoteInputSchema`
+- `downloadLabelFileInputSchema` / `downloadedLabelOutputSchema`
+
 ## 🔧 Schema Naming Convention
 
 All schemas follow a consistent naming pattern:
@@ -397,7 +425,7 @@ All eBay API endpoints now have comprehensive Effect-backed schemas!
 - [x] **Taxonomy** - 4 endpoints ✅
 - [x] **Other APIs** - 40 endpoints ✅
 
-**Total: 220 eBay API endpoints with full input/output schemas**
+The live tool registry, generated OpenAPI types, and schema catalogue are related but not interchangeable counts. Not every checked-in OpenAPI operation is exposed as an MCP tool, and not every tool has an executable output schema. Use `buildRegistrySnapshot()` for registered tool counts and inspect `wireOutputSchema` on tool definitions for structured-output coverage.
 
 ## 🚧 Future Enhancements
 
@@ -414,21 +442,17 @@ All eBay API endpoints now have comprehensive Effect-backed schemas!
 - Amount schemas support currency conversion fields
 - Date fields use ISO 8601 string format
 - All schemas support eBay's standard pagination (href, limit, offset, etc.)
-- All schemas validated against openapi-typescript generated types
-- Required vs optional fields precisely match eBay API specifications
+- Input schemas are exercised by tool/API tests; executable output contracts have focused wire-schema tests where present.
+- Generated OpenAPI TypeScript types remain the compile-time API response source; runtime schemas intentionally use passthrough objects where eBay may add fields.
 
 ## 📊 Statistics
 
-- **Total Effect-Backed Schemas**: 450+
-- **Total JSON Schemas**: 220+
-- **Lines of Code**: 5,000+
-- **API Categories**: 9
-- **Coverage**: 100% of eBay Seller APIs
+- **Registered tool count and families**: derived from `src/tools/categories/index.ts`
+- **Executable output coverage**: tools carrying `wireOutputSchema`
+- **Generated API types**: `src/types/` from checked-in OpenAPI specifications
 
 ---
 
-**Last Updated**: 2025-11-16
-**Status**: ✅ Complete
 **Effect Version**: see `package.json`
 **Zod Compatibility Carrier**: 3.x
 **zod-to-json-schema Version**: 3.24.6

@@ -7,11 +7,12 @@ and flow live in [CONTEXT.md](CONTEXT.md); this file just pins the names.
 | Term | Means | Avoid calling it |
 | --- | --- | --- |
 | **tool** | One MCP-exposed capability (name + input schema + handler). The unit an agent calls. | "endpoint", "command", "function" |
-| **family** / **category** | A group of related tools, one file per group in `src/tools/categories/` (account, inventory, fulfillment, marketing, analytics, metadata, taxonomy, communication, developer, trading, connector, token-management, other). | "module", "domain" |
+| **family** / **category** | A group of related tools, one file per group in `src/tools/categories/` (account, inventory, fulfillment, marketing, analytics, metadata, taxonomy, communication, developer, trading, connector, token-management, other, media, logistics). | "module", "domain" |
 | **`defineTool`** | The factory binding a tool's Zod raw shape to its handler; the shape is the SSOT for both wire schema and arg types. | "registerTool", "createTool" |
 | **`rawTool`** | Variant of `defineTool` that skips re-validating args (the handler validates against its own schema). | — |
-| **`ToolSpec`** | The input to `defineTool` (name, description, inputSchema, handler, optional ui). | — |
+| **`ToolSpec`** | The input to `defineTool` (name, description, inputSchema, handler, optional `wireOutputSchema`, optional ui). | — |
 | **`ToolEntry`** | The output of `defineTool` (definition + handler + resolved ui); what the registry stores. | — |
+| **`wireOutputSchema`** | Executable response contract advertised through MCP `tools/list` and used to emit/validate `structuredContent`. | inert `outputSchema` metadata |
 | **registry** | `src/tools/registry.ts` — assembles all `ToolEntry`s from `categories/` and exposes `executeTool`. | "router" (that's the CLI sense) |
 | **gating** | Controlling which tools are exposed via `EBAY_MCP_TOOLS`: **all**, **dynamic** (discovery meta-tools), or a **static** family list. | "filtering", "scoping" |
 | **connector** | The MCP connector-metadata tools/plumbing (category/version passed through `_meta`). | — |

@@ -74,7 +74,7 @@
 - **304 eBay API tools** — 100% coverage of the eBay Sell APIs across inventory, orders, marketing, analytics, metadata, taxonomy, and developer tooling.
 - **9 AI clients, auto-configured** — Claude Desktop, Cursor, Zed, Cline, Continue.dev, Windsurf, Roo Code, Claude Code CLI, and Amazon Q Developer.
 - **OAuth 2.0 built in** — full user-token management with automatic refresh, and smart fallback from user tokens (10k–50k req/day) to client credentials (1k req/day).
-- **Resilient by default** — automatic retry with exponential backoff on `429` rate limits, and consistent, loud error surfacing.
+- **Resilient by default** — bounded retry/backoff for safe failures and `429` rate limits, with automatic 5xx retries disabled for ambiguous Media uploads and Logistics create/cancel writes.
 - **Type-safe** — [TypeScript](https://www.typescriptlang.org/) end to end, [Effect](https://effect.website/docs)-backed tool input validation, and [OpenAPI](https://www.openapis.org/)-generated types.
 - **Local-first & private** — runs over STDIO or local HTTP; your credentials and data never leave your machine.
 - **Sandbox and production** — switch environments with a single variable.
@@ -94,7 +94,7 @@ Use this map when deciding which tool family to expose, or when asking an assist
 | `analytics` | Traffic reports, seller standards, and customer-service metrics | "Show my seller standards profile." |
 | `communication` | Buyer-seller messaging, negotiations, notifications, and feedback | "Show recent buyer messages that need a response." |
 | `metadata` / `taxonomy` | Category trees, aspects, item conditions, return-policy metadata, tax jurisdictions, and vehicle compatibility | "Find required item aspects for this category." |
-| `other` | Identity, compliance, VeRO, translation, and international shipping support APIs | "Show my current seller identity details." |
+| `other` | Identity, compliance, VeRO, translation, and eDelivery International Shipping for eligible Greater-China sellers | "Show my current seller identity details." |
 | `developer` / `token-management` | Rate limits, signing keys, OAuth URLs, token refresh, and diagnostics | "Check my eBay API rate limits." |
 | `trading` | Legacy XML fixed-price listing create, revise, relist, and end operations | "Create a fixed-price listing draft from this SKU." |
 | `media` | Secure local or HTTPS image uploads to eBay Picture Services and image lookup | "Upload this product image to eBay." |
@@ -259,6 +259,8 @@ Local Media file uploads stay registered but are unavailable until `EBAY_MCP_MED
 
 The Logistics API is an eBay Limited Release currently restricted here to domestic-US requests. It requires app approval and the opt-in `sell.logistics` permission; after approval, run `npm run setup -- --logistics`. Labels are PDF-only.
 
+Media POSTs and Logistics create/cancel operations do not automatically retry 5xx responses. If a timeout or server error may have occurred after eBay accepted a request, read back the image, quote, or shipment before manually repeating it. See [Media and Logistics contracts](docs/media-logistics-contracts.md) for the exact exposed tools, prerequisites, output behavior, and safe sequences.
+
 ### Authentication & rate limits
 
 | Mode                             | Daily limit     | Best for                | Setup                             |
@@ -308,8 +310,10 @@ Auto-configured by `npm run setup`. Requires [Node.js](https://nodejs.org/en) �
 | [Trading (legacy XML)](src/tools/categories/trading.ts) | Fixed-price listing create, revise, relist, end |
 | [Developer](src/tools/categories/developer.ts) | Rate limits, signing keys, client registration |
 | [Token Management](src/tools/categories/tokenManagement.ts) | OAuth URL generation and token management |
+| [Media](src/tools/categories/media.ts) | Secure local/HTTPS image upload to eBay Picture Services and image lookup |
+| [Logistics](src/tools/categories/logistics.ts) | Limited Release domestic-US USPS quotes, label purchase/cancellation, and PDF download |
 
-**Example tools:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_get_campaigns`, `ebay_get_oauth_url`.
+**Example tools:** `ebay_get_inventory_items`, `ebay_get_orders`, `ebay_create_offer`, `ebay_media_create_image_from_file`, `ebay_logistics_create_shipping_quote`, `ebay_get_oauth_url`.
 
 For the complete machine-readable index, see [llms.txt](llms.txt).
 

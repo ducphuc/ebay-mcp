@@ -249,8 +249,10 @@ EBAY_MCP_UI=on                      # 交互式 MCP Apps 视图（测试版）�
 | [Trading（旧版 XML）](src/tools/categories/trading.ts) | 固定价格刊登的创建、修改、重新刊登和结束 |
 | [Developer](src/tools/categories/developer.ts) | 速率限制、签名密钥、客户端注册 |
 | [Token Management](src/tools/categories/tokenManagement.ts) | OAuth URL 生成与令牌管理 |
+| [Media](src/tools/categories/media.ts) | 将本地/HTTPS 图片安全上传到 eBay Picture Services 并查询图片 |
+| [Logistics](src/tools/categories/logistics.ts) | Limited Release 的美国境内 USPS 报价与面单处理 |
 
-**示例工具：** `ebay_get_inventory_items`、`ebay_get_orders`、`ebay_create_offer`、`ebay_get_campaigns`、`ebay_get_oauth_url`。
+**示例工具：** `ebay_get_inventory_items`、`ebay_get_orders`、`ebay_create_offer`、`ebay_media_create_image_from_file`、`ebay_logistics_create_shipping_quote`、`ebay_get_oauth_url`。
 
 完整的机器可读索引见 [llms.txt](llms.txt)。
 

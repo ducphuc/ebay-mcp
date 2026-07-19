@@ -16,8 +16,8 @@ src/
 ├── config/           # environment loading, constants, toolFamilies
 ├── mcp/              # runtime.ts, httpTransport.ts, toolGating.ts, uiBridge.ts
 ├── tools/            # tool wiring: defineTool.ts, registry.ts, contracts.ts, schemas.ts,
-│                     #   categories/ (13 families), legacy marketing definitions/handlers, ui/
-├── schemas/          # shared Zod schemas
+│                     #   categories/ (15 families), legacy marketing definitions/handlers, ui/
+├── schemas/          # shared Effect-backed schemas and executable MCP output contracts
 ├── skills/           # agent-skills generator (`ebay-mcp skills`)
 ├── scripts/          # CLI tooling (setup, skills, devSync, diagnostics, buildUi, …)
 ├── types/            # generated OpenAPI types — do NOT hand-edit (`pnpm run sync`)

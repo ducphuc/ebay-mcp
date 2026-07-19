@@ -20,9 +20,13 @@ const FAMILY_BLURBS: Record<string, string> = {
   metadata: 'Marketplace policies, item conditions, listing constraints, automotive compatibility',
   taxonomy: 'Category trees, category suggestions, and required item aspects',
   communication: 'Buyer messages, member messages, and notification settings',
-  other: 'Feedback, recommendations, and assorted Sell-API helpers',
+  other:
+    'Feedback, recommendations, and eDelivery International Shipping for eligible Greater-China sellers',
   developer: 'API status, rate limits, client registration, and signing keys',
   trading: 'Legacy Trading API (XML) — create / revise / relist / end fixed-price listings',
+  media: 'Secure local/HTTPS image upload to eBay Picture Services and image lookup',
+  logistics:
+    'Limited Release domestic-US USPS quotes, label purchase/cancellation, and PDF download',
 };
 
 /**

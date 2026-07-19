@@ -249,8 +249,10 @@ EBAY_MCP_UI=on                      # インタラクティブな MCP Apps 表�
 | [Trading（レガシー XML）](src/tools/categories/trading.ts) | 固定価格出品の作成・修正・再出品・終了 |
 | [Developer](src/tools/categories/developer.ts) | レート制限、署名キー、クライアント登録 |
 | [Token Management](src/tools/categories/tokenManagement.ts) | OAuth URL の生成とトークン管理 |
+| [Media](src/tools/categories/media.ts) | ローカル/HTTPS 画像の eBay Picture Services への安全なアップロードと画像参照 |
+| [Logistics](src/tools/categories/logistics.ts) | Limited Release の米国内 USPS 見積もり・ラベル処理 |
 
-**ツール例：** `ebay_get_inventory_items`、`ebay_get_orders`、`ebay_create_offer`、`ebay_get_campaigns`、`ebay_get_oauth_url`。
+**ツール例：** `ebay_get_inventory_items`、`ebay_get_orders`、`ebay_create_offer`、`ebay_media_create_image_from_file`、`ebay_logistics_create_shipping_quote`、`ebay_get_oauth_url`。
 
 完全な機械可読インデックスは [llms.txt](llms.txt) を参照してください。
 

@@ -101,6 +101,7 @@ These credentials are obtained from the [eBay Developer Portal](https://develope
 - **Example:** `/Users/example/ebay-images`
 - **Required:** No; local file upload remains unavailable until configured
 - **Security:** Paths are canonicalized and must remain beneath this root after resolving symlinks. Only regular readable JPEG, PNG, GIF, BMP, TIFF, WEBP, AVIF, and HEIC files up to 12 MiB are accepted. File content determines MIME type. URL uploads separately require an absolute `https:` URL with a host.
+- **Retry behavior:** Media POST uploads do not automatically retry 5xx responses. After an ambiguous timeout/server failure, use the returned/known image ID with `ebay_media_get_image` when possible and inspect EPS state before manually repeating an upload.
 
 #### `EBAY_MCP_TOOLS`
 
@@ -122,6 +123,10 @@ npm run setup -- --logistics
 ```
 
 The wizard also offers an approved-app prompt whose default is **No**. Refresh-token grants omit a scope parameter so refreshing cannot narrow an existing token. Logistics label downloads accept and return `application/pdf` only.
+
+Enabling the `logistics` tool family and receiving `sell.logistics` authorization are separate requirements. Diagnostics warn when Logistics can be exposed but the current token lacks the permission. The API remains limited to the implementation's domestic-US USPS request shapes.
+
+Automatic 5xx retries are disabled for Logistics quote creation, label purchase, and cancellation. If one of those calls fails ambiguously, read back the quote or shipment before manually retrying. Label purchase and cancellation can have financial consequences and should require explicit operator approval. This API is distinct from `ebay_edelivery_*`, the eDelivery International Shipping tools for eligible Greater-China sellers.
 
 ### Required: User Refresh Token (For OAuth Flow)
 
