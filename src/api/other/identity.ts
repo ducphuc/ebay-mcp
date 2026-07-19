@@ -1,5 +1,5 @@
 import type { EbayApiClient } from '@/api/client.js';
-import { EbayApiError } from '@/api/shared/request.js';
+import { type EbayApiError, toEbayApiError } from '@/api/shared/request.js';
 import { getIdentityBaseUrl } from '@/config/environment.js';
 import type { components } from '@/types/sell-apps/other-apis/commerceIdentityV1Oas3.js';
 import { Effect } from 'effect';
@@ -44,12 +44,7 @@ export class IdentityApi {
 
         return client.getWithFullUrl<UserResponse>(`${identityBaseUrl}${this.basePath}/user`);
       },
-      catch: (cause) =>
-        new EbayApiError({
-          method: 'GET',
-          path: `${this.basePath}/user`,
-          cause,
-        }),
+      catch: (cause) => toEbayApiError('GET', `${this.basePath}/user`, cause),
     });
   };
 }

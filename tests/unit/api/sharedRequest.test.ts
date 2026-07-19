@@ -11,6 +11,8 @@ import {
   requireStringEffect,
 } from '@/api/shared/request.js';
 import type { EbayApiClient } from '@/api/client.js';
+import { clientRequestError } from '@/api/clientRequestError.js';
+import { HttpError } from '@/utils/http.js';
 
 describe('shared API request helpers', () => {
   it('builds endpoint-owned query params and omits empty values', () => {
@@ -93,7 +95,58 @@ describe('shared API request helpers', () => {
         _tag: 'EbayApiError',
         method: 'GET',
         path: '/sell/account/v1/custom_policy',
+        message: 'network down',
       });
     }
+  });
+
+  it('recovers eBay error detail through the client Promise boundary', async () => {
+    const path = '/sell/inventory/v1/inventory_item/MISSING-SKU';
+    const ebayErrorBody = {
+      errors: [
+        {
+          errorId: 25710,
+          domain: 'API_INVENTORY',
+          category: 'REQUEST',
+          message: 'Resource not found.',
+          longMessage: 'The SKU value MISSING-SKU was not found.',
+        },
+      ],
+    };
+    // Mirror the real client verbs: the internal Effect failure is collapsed
+    // into a Promise rejection (FiberFailure) by Effect.runPromise.
+    const client = {
+      get: vi.fn(() =>
+        Effect.runPromise(
+          Effect.fail(
+            clientRequestError({
+              kind: 'httpStatus',
+              method: 'GET',
+              url: `https://api.ebay.com${path}`,
+              message: 'eBay API Error: The SKU value MISSING-SKU was not found.',
+              status: 404,
+              cause: new HttpError('Request failed with status code 404', {
+                url: `https://api.ebay.com${path}`,
+                status: 404,
+                data: ebayErrorBody,
+              }),
+            }),
+          ),
+        ),
+      ),
+    } as unknown as EbayApiClient;
+
+    const error = await Effect.runPromise(Effect.flip(requestGetEffect(client, path)));
+
+    expect(error).toBeInstanceOf(EbayApiError);
+    expect(error).toMatchObject({
+      _tag: 'EbayApiError',
+      method: 'GET',
+      path,
+      message: 'eBay API Error: The SKU value MISSING-SKU was not found.',
+      status: 404,
+      kind: 'httpStatus',
+      ebayErrors: ebayErrorBody.errors,
+    });
   });
 });

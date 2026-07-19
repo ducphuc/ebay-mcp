@@ -40,7 +40,7 @@ export const logisticsEntries: ToolEntry[] = [
   defineTool({
     name: 'ebay_logistics_create_from_shipping_quote',
     description:
-      'Purchase a domestic-US USPS label from a quote using the Limited Release Logistics API. This financially consequential operation requires sell.logistics.',
+      'Purchase a domestic-US USPS label from a quote using the Limited Release Logistics API. This financially consequential operation requires sell.logistics. Label purchase can fail with 403 insufficient-permissions unless eBay has approved the application for the limited-release sell.logistics scope; the other Logistics methods are not similarly gated.',
     inputSchema: createFromShippingQuoteInputSchema.shape,
     annotations: {
       readOnlyHint: false,

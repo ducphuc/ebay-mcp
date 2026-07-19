@@ -174,9 +174,10 @@ describe('Inventory Tools Integration Tests', () => {
         404,
       );
 
+      // The eBay error detail must pass through, not a generic error string.
       await expect(
         executeTool(api, 'ebay_get_inventory_item', { sku: 'INVALID-SKU' }),
-      ).rejects.toThrow();
+      ).rejects.toThrow('Detailed error: Inventory item not found');
     });
   });
 

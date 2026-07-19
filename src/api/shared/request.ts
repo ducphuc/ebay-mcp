@@ -1,5 +1,12 @@
 import type { EbayApiClient, EbayRequestConfig } from '@/api/client.js';
-import { Data, Effect } from 'effect';
+import {
+  EbayClientRequestError,
+  type EbayClientRequestErrorKind,
+} from '@/api/clientRequestError.js';
+import { getErrorMessage } from '@/utils/errors.js';
+import { isHttpError } from '@/utils/http.js';
+import { isRecord } from '@/utils/typeGuards.js';
+import { Cause, Data, Effect, Runtime } from 'effect';
 
 /**
  * Query-string values accepted by the eBay REST client helpers.
@@ -23,9 +30,82 @@ export class EbayApiError extends Data.TaggedError('EbayApiError')<{
   readonly method: HttpMethod;
   /** eBay REST path passed to the request adapter. */
   readonly path: string;
+  /**
+   * Human-readable failure message surfaced to MCP clients. Carries the eBay
+   * error detail (e.g. `longMessage`) so tool results never degrade to a
+   * generic runtime string.
+   */
+  readonly message: string;
+  /** HTTP status when the failure came from an eBay response. */
+  readonly status?: number;
+  /** REST client failure category when the cause was the request pipeline. */
+  readonly kind?: EbayClientRequestErrorKind;
+  /** Raw eBay error objects parsed from the response body's `errors` array. */
+  readonly ebayErrors?: readonly Record<string, unknown>[];
   /** Lower-level transport, parsing, or adapter failure. */
   readonly cause: unknown;
 }> {}
+
+/**
+ * Extract eBay's structured `errors` array from a failed response body.
+ *
+ * eBay REST failures arrive as `{ errors: [{ errorId, domain, message,
+ * longMessage, parameters }] }`; every record found is passed through verbatim.
+ */
+export const extractEbayErrors = (
+  data: unknown,
+): readonly Record<string, unknown>[] | undefined => {
+  if (isRecord(data) && Array.isArray(data.errors)) {
+    const records = data.errors.filter(isRecord);
+    if (records.length > 0) {
+      return records;
+    }
+  }
+};
+
+/**
+ * Convert an unknown failure from a Promise-based client call into an
+ * {@link EbayApiError} without losing the eBay error detail.
+ *
+ * The Promise verbs on {@link EbayApiClient} run their internal Effect with
+ * `Effect.runPromise`, so rejections arrive as `FiberFailure` wrappers. This
+ * helper unwraps that layer back to the typed {@link EbayClientRequestError}
+ * (recovering message, status, kind, and the response's `errors` array) and
+ * falls back to the thrown value's own message for anything else.
+ */
+export const toEbayApiError = (method: HttpMethod, path: string, cause: unknown): EbayApiError => {
+  let failure: unknown = cause;
+
+  if (Runtime.isFiberFailure(cause)) {
+    const option = Cause.failureOption(cause[Runtime.FiberFailureCauseId]);
+    if (option._tag === 'Some') {
+      failure = option.value;
+    }
+  }
+
+  if (failure instanceof EbayClientRequestError) {
+    const ebayErrors = isHttpError(failure.cause)
+      ? extractEbayErrors(failure.cause.data)
+      : undefined;
+
+    return new EbayApiError({
+      method,
+      path,
+      message: failure.message,
+      ...(failure.status === undefined ? {} : { status: failure.status }),
+      kind: failure.kind,
+      ...(ebayErrors === undefined ? {} : { ebayErrors }),
+      cause: failure,
+    });
+  }
+
+  return new EbayApiError({
+    method,
+    path,
+    message: getErrorMessage(failure, String(failure)),
+    cause,
+  });
+};
 
 /** Tagged validation failure returned before an endpoint request is sent. */
 export class EndpointInputError extends Data.TaggedError('EndpointInputError')<{
@@ -242,7 +322,7 @@ export const requestGetEffect = <T = unknown>(
 
       return params === undefined ? client.get<T>(path) : client.get<T>(path, params);
     },
-    catch: (cause) => new EbayApiError({ method: 'GET', path, cause }),
+    catch: (cause) => toEbayApiError('GET', path, cause),
   });
 
 /**
@@ -273,7 +353,7 @@ export const requestPostEffect = <T = unknown>(
 
       return body === undefined ? client.post<T>(path) : client.post<T>(path, body);
     },
-    catch: (cause) => new EbayApiError({ method: 'POST', path, cause }),
+    catch: (cause) => toEbayApiError('POST', path, cause),
   });
 
 /**
@@ -296,7 +376,7 @@ export const requestPutEffect = <T = unknown>(
 ): Effect.Effect<T, EbayApiError> =>
   Effect.tryPromise({
     try: () => client.put<T>(path, body),
-    catch: (cause) => new EbayApiError({ method: 'PUT', path, cause }),
+    catch: (cause) => toEbayApiError('PUT', path, cause),
   });
 
 /**
@@ -317,5 +397,5 @@ export const requestDeleteEffect = <T = unknown>(
 ): Effect.Effect<T, EbayApiError> =>
   Effect.tryPromise({
     try: () => client.delete<T>(path),
-    catch: (cause) => new EbayApiError({ method: 'DELETE', path, cause }),
+    catch: (cause) => toEbayApiError('DELETE', path, cause),
   });

@@ -10,10 +10,10 @@ import {
   toolNamesInFamilies,
 } from '@/mcp/toolGating.js';
 import { buildUiToolResult, createUiBridge, type UiBridge } from '@/mcp/uiBridge.js';
+import { EbayApiError, EndpointInputError } from '@/api/shared/request.js';
 import { getToolEntries, type ToolEntry } from '@/tools/registry.js';
-import { getErrorMessage } from '@/utils/errors.js';
 import { serverLogger, toolLogger } from '@/utils/logger.js';
-import { Effect } from 'effect';
+import { Cause, Effect, Runtime } from 'effect';
 
 type ToolArgs = Record<string, unknown>;
 
@@ -53,14 +53,70 @@ function formatToolSuccess(result: unknown, includeStructuredContent: boolean) {
   };
 }
 
-function formatToolFailure(error: unknown) {
-  const errorMessage = getErrorMessage(error);
+/**
+ * Recover the typed failure value from a handler rejection.
+ *
+ * Tool handlers run endpoint Effects with `Effect.runPromise`, so rejections
+ * arrive as `FiberFailure` wrappers whose `.message` degrades to a generic
+ * string for tagged errors. Squashing the underlying cause restores the
+ * original failure (or first defect) so its eBay error detail can be surfaced.
+ */
+function unwrapToolFailure(error: unknown): unknown {
+  return Runtime.isFiberFailure(error) ? Cause.squash(error[Runtime.FiberFailureCauseId]) : error;
+}
 
+/** Stringify an arbitrary thrown value without collapsing it to "Unknown error". */
+function describeUnknownFailure(failure: unknown): string {
+  if (failure instanceof Error) {
+    return failure.message === '' ? String(failure) : failure.message;
+  }
+
+  if (typeof failure === 'string') {
+    return failure;
+  }
+
+  try {
+    return JSON.stringify(failure) ?? String(failure);
+  } catch {
+    return String(failure);
+  }
+}
+
+/**
+ * Build the failure payload for a tool result, passing the eBay API error
+ * through instead of a generic message: message, HTTP status, request method
+ * and path, and the raw eBay `errors` array when the response carried one.
+ */
+function toolFailurePayload(error: unknown): Record<string, unknown> {
+  const failure = unwrapToolFailure(error);
+
+  if (failure instanceof EbayApiError) {
+    return {
+      error: failure.message,
+      method: failure.method,
+      path: failure.path,
+      ...(failure.status === undefined ? {} : { status: failure.status }),
+      ...(failure.kind === undefined ? {} : { kind: failure.kind }),
+      ...(failure.ebayErrors === undefined ? {} : { ebayErrors: failure.ebayErrors }),
+    };
+  }
+
+  if (failure instanceof EndpointInputError) {
+    return {
+      error: failure.message,
+      parameter: failure.parameter,
+    };
+  }
+
+  return { error: describeUnknownFailure(failure) };
+}
+
+function formatToolFailure(error: unknown) {
   return {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify({ error: errorMessage }, null, 2),
+        text: JSON.stringify(toolFailurePayload(error), null, 2),
       },
     ],
     isError: true,
@@ -118,10 +174,10 @@ function registerTool(
               : formatToolSuccess(result, entry.wireOutputSchema !== undefined);
           }),
           Effect.catchAll((error) => {
-            const errorMessage = getErrorMessage(error);
-
             if (logToolExecution) {
-              toolLogger.error(`Tool ${definition.name} failed`, { error: errorMessage });
+              toolLogger.error(`Tool ${definition.name} failed`, {
+                error: describeUnknownFailure(unwrapToolFailure(error)),
+              });
             }
 
             return Effect.succeed(formatToolFailure(error));

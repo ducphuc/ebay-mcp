@@ -104,4 +104,84 @@ describe('MCP runtime', () => {
       structuredContent: result,
     });
   });
+
+  it('passes the eBay API error through tool failures instead of a generic message', async () => {
+    const { createEbayMcpRuntime } = await import('@/mcp/runtime.js');
+    const { EbayApiError } = await import('@/api/shared/request.js');
+    const ebayErrors = [
+      {
+        errorId: 25710,
+        domain: 'API_INVENTORY',
+        message: 'Resource not found.',
+        longMessage: 'The SKU value MISSING-SKU was not found.',
+      },
+    ];
+    const endpointFailure = new EbayApiError({
+      method: 'GET',
+      path: '/sell/inventory/v1/inventory_item/MISSING-SKU',
+      message: 'eBay API Error: The SKU value MISSING-SKU was not found.',
+      status: 404,
+      kind: 'httpStatus',
+      ebayErrors,
+      cause: undefined,
+    });
+    createEbayMcpRuntime({
+      api: {
+        initialize: vi.fn(() => Effect.succeed(undefined)),
+        inventory: { getInventoryItem: vi.fn(() => Effect.fail(endpointFailure)) },
+      } as never,
+      serverConfig: { name: 'test-mcp', version: '0.0.0' },
+    });
+    const inventoryCall = mcpMock.registerTool.mock.calls.find(
+      ([name]) => name === 'ebay_get_inventory_item',
+    );
+    const callback = inventoryCall?.[2];
+
+    const response = await callback?.({ sku: 'MISSING-SKU' });
+
+    expect(response?.isError).toBe(true);
+    const payload = JSON.parse(response?.content?.[0]?.text ?? '{}');
+    expect(payload).toEqual({
+      error: 'eBay API Error: The SKU value MISSING-SKU was not found.',
+      method: 'GET',
+      path: '/sell/inventory/v1/inventory_item/MISSING-SKU',
+      status: 404,
+      kind: 'httpStatus',
+      ebayErrors,
+    });
+    expect(payload.error).not.toBe('An error has occurred');
+  });
+
+  it('reports validation failures with the offending parameter', async () => {
+    const { createEbayMcpRuntime } = await import('@/mcp/runtime.js');
+    const { EndpointInputError } = await import('@/api/shared/request.js');
+    createEbayMcpRuntime({
+      api: {
+        initialize: vi.fn(() => Effect.succeed(undefined)),
+        inventory: {
+          getInventoryItem: vi.fn(() =>
+            Effect.fail(
+              new EndpointInputError({
+                parameter: 'sku',
+                message: 'sku is required and must be a string',
+              }),
+            ),
+          ),
+        },
+      } as never,
+      serverConfig: { name: 'test-mcp', version: '0.0.0' },
+    });
+    const inventoryCall = mcpMock.registerTool.mock.calls.find(
+      ([name]) => name === 'ebay_get_inventory_item',
+    );
+    const callback = inventoryCall?.[2];
+
+    const response = await callback?.({ sku: 'PRESENT-BUT-REJECTED' });
+
+    expect(response?.isError).toBe(true);
+    expect(JSON.parse(response?.content?.[0]?.text ?? '{}')).toEqual({
+      error: 'sku is required and must be a string',
+      parameter: 'sku',
+    });
+  });
 });

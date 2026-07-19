@@ -79,6 +79,7 @@ const createTradingApiError = (
   new EbayApiError({
     method: 'POST',
     path,
+    message: `Trading API ${callName} ${message}`,
     cause: new TradingApiFailure({
       callName,
       path,
@@ -142,6 +143,7 @@ const parseTradingXml = ({
       new EbayApiError({
         method: 'POST',
         path,
+        message: `Failed to parse Trading API ${callName} response: ${getErrorMessage(error)}`,
         cause: new TradingApiFailure({
           callName,
           path,
@@ -210,6 +212,7 @@ const validateTradingAck = (
       new EbayApiError({
         method: 'POST',
         path,
+        message: extractTradingErrorMessage(result.Errors),
         cause: new TradingApiFailure({
           callName,
           path,

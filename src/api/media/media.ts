@@ -3,11 +3,12 @@ import { basename } from 'node:path';
 import type { EbayApiClient } from '@/api/client.js';
 import { readLocalMediaImage } from './localImage.js';
 import {
-  EbayApiError,
+  type EbayApiError,
   EndpointInputError,
   optionalStringEffect,
   requireObjectEffect,
   requireStringEffect,
+  toEbayApiError,
 } from '@/api/shared/request.js';
 import type { EbayEnvironment } from '@/config/environment.js';
 import { getMediaBaseUrl } from '@/config/environment.js';
@@ -140,7 +141,7 @@ export class MediaApi {
           ...(method === 'POST' ? { retryServerErrors: false } : {}),
           ...(headers === undefined ? {} : { headers }),
         }),
-      catch: (cause) => new EbayApiError({ method, path, cause }),
+      catch: (cause) => toEbayApiError(method, path, cause),
     });
 
   /**
