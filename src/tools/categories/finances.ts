@@ -19,7 +19,7 @@ const financesScopeRequirement =
   'Required OAuth Scope: sell.finances\nMinimum Scope: https://api.ebay.com/oauth/api_scope/sell.finances';
 
 const orderEarningsScopeRequirement =
-  'Required OAuth Scope: sell.finances.earnings.read (restricted; request access through an eBay application growth check)\nMinimum Scope: https://api.ebay.com/oauth/api_scope/sell.finances.earnings.read';
+  'Required OAuth Scope: sell.finances.earnings.read (restricted; request access through an eBay application growth check)\nMinimum Scope: https://api.ebay.com/oauth/api_scope/sell.finances.earnings.read\nAn HTTP 403 / eBay access error 1100 means this scope has not been granted; it does not mean the order has zero earnings.';
 
 const readOnlyAnnotations = {
   readOnlyHint: true,
@@ -46,7 +46,7 @@ export const financesEntries: ToolEntry[] = [
   }),
   defineTool({
     name: 'ebay_finances_get_payouts',
-    description: `Retrieve the seller's payouts, including pending and completed payouts, with optional filter, sort, and pagination.\n\n${financesScopeRequirement}`,
+    description: `Retrieve the seller's payouts, including pending and completed payouts, with optional filter, sort, and pagination. Date ranges must use payoutDate, not transactionDate.\n\n${financesScopeRequirement}`,
     inputSchema: getPayoutsInputSchema.shape,
     annotations: readOnlyAnnotations,
     handler: (api, args) => Effect.runPromise(api.finances.getPayouts(args)),
@@ -60,7 +60,7 @@ export const financesEntries: ToolEntry[] = [
   }),
   defineTool({
     name: 'ebay_finances_get_payout_summary',
-    description: `Retrieve counts and amounts of the seller's payouts matching an optional filter.\n\n${financesScopeRequirement}`,
+    description: `Retrieve counts and amounts of the seller's payouts matching an optional filter. Date ranges must use payoutDate, not transactionDate.\n\n${financesScopeRequirement}`,
     inputSchema: getPayoutSummaryInputSchema.shape,
     annotations: readOnlyAnnotations,
     handler: (api, args) => Effect.runPromise(api.finances.getPayoutSummary(args)),
@@ -74,7 +74,7 @@ export const financesEntries: ToolEntry[] = [
   }),
   defineTool({
     name: 'ebay_finances_get_transfer',
-    description: `Retrieve the details of a TRANSFER transaction, where the seller reimbursed eBay, by transfer ID.\n\n${financesScopeRequirement}`,
+    description: `Retrieve the details of a TRANSFER transaction, where the seller reimbursed eBay, by transfer ID. Discover transfer IDs with ebay_finances_get_transactions using filter="transactionType:{TRANSFER}"; no matches are returned as an empty transaction collection.\n\n${financesScopeRequirement}`,
     inputSchema: getTransferInputSchema.shape,
     annotations: readOnlyAnnotations,
     handler: (api, args) => Effect.runPromise(api.finances.getTransfer(args)),
@@ -102,7 +102,7 @@ export const financesEntries: ToolEntry[] = [
   }),
   defineTool({
     name: 'ebay_finances_get_billing_activities',
-    description: `Retrieve the seller's billing activity line items (fees, credits, and other non-sale charges). eBay expects exactly one of a transactionDate range, orderId, listingId, or billingCycleId filter value.\n\n${financesScopeRequirement}`,
+    description: `Retrieve the seller's billing activity line items (fees, credits, and other non-sale charges). The filter is required and must contain exactly one of transactionDate, orderId, listingId, or billingCycleId.\n\n${financesScopeRequirement}`,
     inputSchema: getBillingActivitiesInputSchema.shape,
     annotations: readOnlyAnnotations,
     handler: (api, args) => Effect.runPromise(api.finances.getBillingActivities(args)),

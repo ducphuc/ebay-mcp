@@ -105,6 +105,25 @@ describe('MCP runtime', () => {
     });
   });
 
+  it('serializes an undefined successful result as valid MCP text content', async () => {
+    const { createEbayMcpRuntime } = await import('@/mcp/runtime.js');
+    createEbayMcpRuntime({
+      api: {
+        initialize: vi.fn(() => Effect.succeed(undefined)),
+        finances: { getTransactions: vi.fn(() => Effect.succeed(undefined)) },
+      } as never,
+      serverConfig: { name: 'test-mcp', version: '0.0.0' },
+    });
+    const transactionCall = mcpMock.registerTool.mock.calls.find(
+      ([name]) => name === 'ebay_finances_get_transactions',
+    );
+    const callback = transactionCall?.[2];
+
+    const response = await callback?.({ filter: 'transactionType:{TRANSFER}' });
+
+    expect(response).toEqual({ content: [{ type: 'text', text: 'null' }] });
+  });
+
   it('passes the eBay API error through tool failures instead of a generic message', async () => {
     const { createEbayMcpRuntime } = await import('@/mcp/runtime.js');
     const { EbayApiError } = await import('@/api/shared/request.js');

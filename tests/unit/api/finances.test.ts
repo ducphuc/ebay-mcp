@@ -44,6 +44,22 @@ describe('FinancesApi', () => {
     });
   });
 
+  it('normalizes a no-content transaction response to an empty collection', async () => {
+    vi.mocked(client.get).mockResolvedValue(undefined);
+
+    const result = await Effect.runPromise(
+      api.getTransactions({ filter: 'transactionType:{TRANSFER}', limit: 50, offset: 0 }),
+    );
+
+    expect(result).toEqual({
+      href: '/sell/finances/v1/transaction',
+      limit: 50,
+      offset: 0,
+      total: 0,
+      transactions: [],
+    });
+  });
+
   it('retrieves the transaction summary with an optional filter', async () => {
     vi.mocked(client.get).mockResolvedValue({ creditCount: 2 });
 
@@ -54,6 +70,19 @@ describe('FinancesApi', () => {
       { filter: 'transactionStatus:{PAYOUT}' },
       { baseURL: 'https://apiz.ebay.com' },
     );
+  });
+
+  it('rejects transaction summary filters that omit transactionStatus', async () => {
+    const result = await Effect.runPromise(
+      Effect.either(
+        api.getTransactionSummary({
+          filter: 'transactionDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]',
+        }),
+      ),
+    );
+
+    expect(result._tag).toBe('Left');
+    expect(client.get).not.toHaveBeenCalled();
   });
 
   it('retrieves payouts with filter, sort, and pagination wire params', async () => {
@@ -73,6 +102,63 @@ describe('FinancesApi', () => {
       { filter: 'payoutStatus:{SUCCEEDED}', sort: 'payoutDate', limit: '20', offset: '0' },
       { baseURL: 'https://apiz.ebay.com' },
     );
+  });
+
+  it('retrieves payouts with a payoutDate filter', async () => {
+    vi.mocked(client.get).mockResolvedValue({ payouts: [] });
+    const filter = 'payoutDate:[2026-05-01T00:00:00.000Z..2026-07-20T00:00:00.000Z]';
+
+    await Effect.runPromise(api.getPayouts({ filter }));
+
+    expect(client.get).toHaveBeenCalledWith(
+      '/sell/finances/v1/payout',
+      { filter },
+      { baseURL: 'https://apiz.ebay.com' },
+    );
+  });
+
+  it('rejects transactionDate on payout endpoints before making a request', async () => {
+    const result = await Effect.runPromise(
+      Effect.either(
+        api.getPayouts({
+          filter: 'transactionDate:[2026-05-01T00:00:00.000Z..2026-07-20T00:00:00.000Z]',
+        }),
+      ),
+    );
+
+    expect(result._tag).toBe('Left');
+    if (result._tag === 'Left') {
+      expect(result.left).toBeInstanceOf(EndpointInputError);
+      expect(result.left.message).toContain('transactionDate');
+    }
+    expect(client.get).not.toHaveBeenCalled();
+  });
+
+  it('rejects transactionDate on the payout summary endpoint', async () => {
+    const result = await Effect.runPromise(
+      Effect.either(
+        api.getPayoutSummary({
+          filter: 'transactionDate:[2026-05-01T00:00:00.000Z..2026-07-20T00:00:00.000Z]',
+        }),
+      ),
+    );
+
+    expect(result._tag).toBe('Left');
+    expect(client.get).not.toHaveBeenCalled();
+  });
+
+  it('normalizes a no-content payout response to an empty collection', async () => {
+    vi.mocked(client.get).mockResolvedValue(undefined);
+
+    const result = await Effect.runPromise(api.getPayouts({ limit: 25, offset: 0 }));
+
+    expect(result).toEqual({
+      href: '/sell/finances/v1/payout',
+      limit: 25,
+      offset: 0,
+      total: 0,
+      payouts: [],
+    });
   });
 
   it('retrieves a payout by ID with the path segment URL-encoded', async () => {
@@ -141,6 +227,19 @@ describe('FinancesApi', () => {
     );
   });
 
+  it('rejects non-orderCreationDate filters for order earnings', async () => {
+    const result = await Effect.runPromise(
+      Effect.either(
+        api.getOrderEarnings({
+          filter: 'transactionDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]',
+        }),
+      ),
+    );
+
+    expect(result._tag).toBe('Left');
+    expect(client.get).not.toHaveBeenCalled();
+  });
+
   it('retrieves order earnings for a single order with the path segment URL-encoded', async () => {
     vi.mocked(client.get).mockResolvedValue({ orderId: '12-34567/89012' });
 
@@ -191,6 +290,29 @@ describe('FinancesApi', () => {
       },
       { baseURL: 'https://api.ebay.com' },
     );
+  });
+
+  it('rejects billing activity filters with multiple selectors', async () => {
+    const result = await Effect.runPromise(
+      Effect.either(
+        api.getBillingActivities({
+          filter:
+            'transactionDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z],orderId:{12-34567-89012}',
+        }),
+      ),
+    );
+
+    expect(result._tag).toBe('Left');
+    expect(client.get).not.toHaveBeenCalled();
+  });
+
+  it('rejects missing billing activity filters', async () => {
+    const result = await Effect.runPromise(
+      Effect.either(api.getBillingActivities({ filter: undefined as unknown as string })),
+    );
+
+    expect(result._tag).toBe('Left');
+    expect(client.get).not.toHaveBeenCalled();
   });
 
   it('fails with a tagged input error when orderId is missing', async () => {

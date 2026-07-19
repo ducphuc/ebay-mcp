@@ -42,14 +42,17 @@ export interface EbayMcpRuntime {
 }
 
 function formatToolSuccess(result: unknown, includeStructuredContent: boolean) {
+  const serializableResult = result === undefined ? null : result;
   return {
     content: [
       {
         type: 'text' as const,
-        text: JSON.stringify(result, null, 2),
+        text: JSON.stringify(serializableResult, null, 2),
       },
     ],
-    ...(includeStructuredContent ? { structuredContent: result as Record<string, unknown> } : {}),
+    ...(includeStructuredContent && serializableResult !== null
+      ? { structuredContent: serializableResult as Record<string, unknown> }
+      : {}),
   };
 }
 

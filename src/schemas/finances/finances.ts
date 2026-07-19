@@ -2,11 +2,25 @@ import { z } from '@/utils/effectSchema.js';
 
 const nonEmptyStringSchema = z.string().regex(/\S/);
 
-const filterSchema = z
+const transactionFilterSchema = z
   .string()
   .optional()
   .describe(
-    'eBay filter expression, e.g. "transactionDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]"',
+    'Transaction filter expression using transactionDate, transactionType, transactionStatus, buyerUsername, payoutId, transactionId, orderId, or payoutReference, e.g. "transactionDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]"',
+  );
+
+const payoutFilterSchema = z
+  .string()
+  .optional()
+  .describe(
+    'Payout filter expression using payoutDate, lastAttemptedPayoutDate, payoutStatus, or payoutReference; use payoutDate (not transactionDate) for date ranges, e.g. "payoutDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]"',
+  );
+
+const payoutSummaryFilterSchema = z
+  .string()
+  .optional()
+  .describe(
+    'Payout summary filter using payoutDate and/or payoutStatus; use payoutDate (not transactionDate) for date ranges, e.g. "payoutDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]"',
   );
 
 const sortSchema = z
@@ -23,7 +37,7 @@ const offsetSchema = z
 
 /** Tool input schema for ebay_finances_get_transactions (getTransactions). */
 export const getTransactionsInputSchema = z.object({
-  filter: filterSchema,
+  filter: transactionFilterSchema,
   sort: sortSchema,
   limit: z
     .number()
@@ -37,17 +51,14 @@ export const getTransactionsInputSchema = z.object({
 
 /** Tool input schema for ebay_finances_get_transaction_summary (getTransactionSummary). */
 export const getTransactionSummaryInputSchema = z.object({
-  filter: z
-    .string()
-    .optional()
-    .describe(
-      'Required by eBay and must include transactionStatus, e.g. "transactionStatus:{PAYOUT},transactionDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]"',
-    ),
+  filter: nonEmptyStringSchema.describe(
+    'Required eBay filter that must include transactionStatus, e.g. "transactionStatus:{PAYOUT},transactionDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]"',
+  ),
 });
 
 /** Tool input schema for ebay_finances_get_payouts (getPayouts). */
 export const getPayoutsInputSchema = z.object({
-  filter: filterSchema,
+  filter: payoutFilterSchema,
   sort: sortSchema,
   limit: z
     .number()
@@ -66,7 +77,7 @@ export const getPayoutInputSchema = z.object({
 
 /** Tool input schema for ebay_finances_get_payout_summary (getPayoutSummary). */
 export const getPayoutSummaryInputSchema = z.object({
-  filter: filterSchema,
+  filter: payoutSummaryFilterSchema,
 });
 
 /** Tool input schema for ebay_finances_get_seller_funds_summary (getSellerFundsSummary). */
@@ -116,12 +127,9 @@ export const getOrderEarningsSummaryInputSchema = z.object({
 
 /** Tool input schema for ebay_finances_get_billing_activities (getBillingActivities). */
 export const getBillingActivitiesInputSchema = z.object({
-  filter: z
-    .string()
-    .optional()
-    .describe(
-      'eBay filter expression; eBay expects exactly one of a transactionDate range, orderId, listingId, or billingCycleId filter value',
-    ),
+  filter: nonEmptyStringSchema.describe(
+    'Required eBay filter expression containing exactly one of transactionDate, orderId, listingId, or billingCycleId',
+  ),
   sort: sortSchema,
   limit: z
     .number()

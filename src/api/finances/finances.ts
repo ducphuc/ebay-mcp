@@ -2,7 +2,7 @@ import type { EbayApiClient } from '@/api/client.js';
 import {
   buildEndpointParams,
   type EbayApiError,
-  type EndpointInputError,
+  EndpointInputError,
   optionalNonNegativeNumberEffect,
   optionalPositiveNumberEffect,
   optionalStringEffect,
@@ -26,6 +26,95 @@ import type {
 import type { components } from '@/types/sell-apps/account-management/sellFinancesV1Oas3.js';
 import type { InferEffectSchema } from '@/utils/effectSchemaTypes.js';
 import { Effect } from 'effect';
+
+const transactionSummaryRequiredFilter = 'transactionStatus';
+const transactionFilterKeys = new Set([
+  'transactionDate',
+  'transactionType',
+  'transactionStatus',
+  'buyerUsername',
+  'payoutId',
+  'transactionId',
+  'orderId',
+  'payoutReference',
+]);
+const transactionSummaryFilterKeys = new Set([
+  'transactionStatus',
+  'transactionDate',
+  'transactionType',
+  'buyerUsername',
+  'payoutId',
+  'transactionId',
+  'orderId',
+]);
+const payoutFilterKeys = new Set([
+  'payoutDate',
+  'lastAttemptedPayoutDate',
+  'payoutStatus',
+  'payoutReference',
+]);
+const payoutSummaryFilterKeys = new Set(['payoutDate', 'payoutStatus']);
+const orderEarningsFilterKeys = new Set(['orderCreationDate']);
+const billingFilterKeys = new Set(['transactionDate', 'orderId', 'listingId', 'billingCycleId']);
+
+const filterKeys = (filter: string): string[] =>
+  Array.from(filter.matchAll(/(?:^|,)\s*([A-Za-z][A-Za-z0-9]*)\s*:/g), (match) => match[1]);
+
+const validateFilterKeysEffect = (
+  filter: string | undefined,
+  allowedKeys: ReadonlySet<string>,
+  requiredKey?: string,
+  exactKeyCount?: number,
+): Effect.Effect<string | undefined, EndpointInputError> => {
+  if (filter === undefined) {
+    if (requiredKey !== undefined || (exactKeyCount !== undefined && exactKeyCount > 0)) {
+      const requirement = requiredKey ?? `exactly ${exactKeyCount} criterion`;
+      return Effect.fail(
+        new EndpointInputError({
+          parameter: 'filter',
+          message: `filter must include ${requirement}`,
+        }),
+      );
+    }
+    return Effect.succeed(undefined);
+  }
+
+  const keys = filterKeys(filter);
+  if (keys.length === 0) {
+    return Effect.fail(
+      new EndpointInputError({
+        parameter: 'filter',
+        message: 'filter must contain at least one valid criterion',
+      }),
+    );
+  }
+  const unsupportedKey = keys.find((key) => !allowedKeys.has(key));
+  if (unsupportedKey !== undefined) {
+    return Effect.fail(
+      new EndpointInputError({
+        parameter: 'filter',
+        message: `filter criterion ${unsupportedKey} is not supported by this endpoint`,
+      }),
+    );
+  }
+  if (requiredKey !== undefined && !keys.includes(requiredKey)) {
+    return Effect.fail(
+      new EndpointInputError({
+        parameter: 'filter',
+        message: `filter must include ${requiredKey}`,
+      }),
+    );
+  }
+  if (exactKeyCount !== undefined && keys.length !== exactKeyCount) {
+    return Effect.fail(
+      new EndpointInputError({
+        parameter: 'filter',
+        message: `filter must contain exactly ${exactKeyCount} criterion${exactKeyCount === 1 ? '' : 's'}`,
+      }),
+    );
+  }
+  return Effect.succeed(filter);
+};
 
 /** Input accepted by getTransactions. */
 export type GetTransactionsInput = InferEffectSchema<typeof getTransactionsInputSchema>;
@@ -176,7 +265,8 @@ export class FinancesApi {
     input: GetTransactionsInput = {},
   ): Effect.Effect<Transactions, EbayApiError | EndpointInputError> =>
     Effect.gen(this, function* () {
-      const filter = yield* optionalStringEffect(input.filter, 'filter');
+      const rawFilter = yield* optionalStringEffect(input.filter, 'filter');
+      const filter = yield* validateFilterKeysEffect(rawFilter, transactionFilterKeys);
       const sort = yield* optionalStringEffect(input.sort, 'sort');
       const limit = yield* optionalPositiveNumberEffect(input.limit, 'limit');
       const offset = yield* optionalNonNegativeNumberEffect(input.offset, 'offset');
@@ -187,15 +277,29 @@ export class FinancesApi {
         limit: { wireName: 'limit', value: limit === undefined ? undefined : String(limit) },
         offset: { wireName: 'offset', value: offset === undefined ? undefined : String(offset) },
       });
-      return yield* requestGetEffect<Transactions>(this.client, path, params, {
-        baseURL: this.financesBaseUrl,
-      });
+      const response = yield* requestGetEffect<Transactions | undefined>(
+        this.client,
+        path,
+        params,
+        {
+          baseURL: this.financesBaseUrl,
+        },
+      );
+      return (
+        response ?? {
+          href: path,
+          limit: limit ?? 20,
+          offset: offset ?? 0,
+          total: 0,
+          transactions: [],
+        }
+      );
     });
 
   /**
    * Retrieves counts and amounts of the seller's transactions matching a filter.
    *
-   * @param input - Optional filter expression restricting the summarized transactions.
+   * @param input - Required filter expression containing transactionStatus.
    * @returns An Effect that succeeds with the transaction summary response.
    *
    * @example
@@ -208,10 +312,15 @@ export class FinancesApi {
    * @see https://developer.ebay.com/api-docs/sell/finances/resources/transaction/methods/getTransactionSummary
    */
   public getTransactionSummary = (
-    input: GetTransactionSummaryInput = {},
+    input: GetTransactionSummaryInput,
   ): Effect.Effect<TransactionSummaryResponse, EbayApiError | EndpointInputError> =>
     Effect.gen(this, function* () {
-      const filter = yield* optionalStringEffect(input.filter, 'filter');
+      const rawFilter = yield* optionalStringEffect(input?.filter, 'filter');
+      const filter = yield* validateFilterKeysEffect(
+        rawFilter,
+        transactionSummaryFilterKeys,
+        transactionSummaryRequiredFilter,
+      );
       const path = `${this.basePath}/transaction_summary`;
       const params = buildEndpointParams({
         filter: { wireName: 'filter', value: filter },
@@ -240,7 +349,8 @@ export class FinancesApi {
     input: GetPayoutsInput = {},
   ): Effect.Effect<Payouts, EbayApiError | EndpointInputError> =>
     Effect.gen(this, function* () {
-      const filter = yield* optionalStringEffect(input.filter, 'filter');
+      const rawFilter = yield* optionalStringEffect(input.filter, 'filter');
+      const filter = yield* validateFilterKeysEffect(rawFilter, payoutFilterKeys);
       const sort = yield* optionalStringEffect(input.sort, 'sort');
       const limit = yield* optionalPositiveNumberEffect(input.limit, 'limit');
       const offset = yield* optionalNonNegativeNumberEffect(input.offset, 'offset');
@@ -251,9 +361,18 @@ export class FinancesApi {
         limit: { wireName: 'limit', value: limit === undefined ? undefined : String(limit) },
         offset: { wireName: 'offset', value: offset === undefined ? undefined : String(offset) },
       });
-      return yield* requestGetEffect<Payouts>(this.client, path, params, {
+      const response = yield* requestGetEffect<Payouts | undefined>(this.client, path, params, {
         baseURL: this.financesBaseUrl,
       });
+      return (
+        response ?? {
+          href: path,
+          limit: limit ?? 20,
+          offset: offset ?? 0,
+          total: 0,
+          payouts: [],
+        }
+      );
     });
 
   /**
@@ -299,7 +418,8 @@ export class FinancesApi {
     input: GetPayoutSummaryInput = {},
   ): Effect.Effect<PayoutSummaryResponse, EbayApiError | EndpointInputError> =>
     Effect.gen(this, function* () {
-      const filter = yield* optionalStringEffect(input.filter, 'filter');
+      const rawFilter = yield* optionalStringEffect(input.filter, 'filter');
+      const filter = yield* validateFilterKeysEffect(rawFilter, payoutSummaryFilterKeys);
       const path = `${this.basePath}/payout_summary`;
       const params = buildEndpointParams({
         filter: { wireName: 'filter', value: filter },
@@ -374,7 +494,8 @@ export class FinancesApi {
     input: GetOrderEarningsInput = {},
   ): Effect.Effect<OrderEarnings, EbayApiError | EndpointInputError> =>
     Effect.gen(this, function* () {
-      const filter = yield* optionalStringEffect(input.filter, 'filter');
+      const rawFilter = yield* optionalStringEffect(input.filter, 'filter');
+      const filter = yield* validateFilterKeysEffect(rawFilter, orderEarningsFilterKeys);
       const sort = yield* optionalStringEffect(input.sort, 'sort');
       const limit = yield* optionalPositiveNumberEffect(input.limit, 'limit');
       const offset = yield* optionalNonNegativeNumberEffect(input.offset, 'offset');
@@ -437,7 +558,8 @@ export class FinancesApi {
     input: GetOrderEarningsSummaryInput = {},
   ): Effect.Effect<OrderEarningsSummary, EbayApiError | EndpointInputError> =>
     Effect.gen(this, function* () {
-      const filter = yield* optionalStringEffect(input.filter, 'filter');
+      const rawFilter = yield* optionalStringEffect(input.filter, 'filter');
+      const filter = yield* validateFilterKeysEffect(rawFilter, orderEarningsFilterKeys);
       const path = `${this.basePath}/order_earnings_summary`;
       const params = buildEndpointParams({
         filter: { wireName: 'filter', value: filter },
@@ -466,10 +588,11 @@ export class FinancesApi {
    * @see https://developer.ebay.com/api-docs/sell/finances/resources/billing_activity/methods/getBillingActivities
    */
   public getBillingActivities = (
-    input: GetBillingActivitiesInput = {},
+    input: GetBillingActivitiesInput,
   ): Effect.Effect<BillingActivityResponse, EbayApiError | EndpointInputError> =>
     Effect.gen(this, function* () {
-      const filter = yield* optionalStringEffect(input.filter, 'filter');
+      const rawFilter = yield* optionalStringEffect(input?.filter, 'filter');
+      const filter = yield* validateFilterKeysEffect(rawFilter, billingFilterKeys, undefined, 1);
       const sort = yield* optionalStringEffect(input.sort, 'sort');
       const limit = yield* optionalPositiveNumberEffect(input.limit, 'limit');
       const offset = yield* optionalNonNegativeNumberEffect(input.offset, 'offset');
