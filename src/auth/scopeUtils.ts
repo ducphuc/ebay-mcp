@@ -307,19 +307,19 @@ export const getRequiredScopesForTool = (toolName: string): ScopeRequirement | n
       description: 'Requires access to seller payout, transaction, and funds data',
     },
     ebay_finances_get_order_earnings: {
-      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
-      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
-      description: 'Requires access to seller payout, transaction, and funds data',
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances.earnings.read'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances.earnings.read',
+      description: 'Requires restricted access to per-order earnings data',
     },
     ebay_finances_get_order_earnings_by_id: {
-      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
-      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
-      description: 'Requires access to seller payout, transaction, and funds data',
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances.earnings.read'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances.earnings.read',
+      description: 'Requires restricted access to per-order earnings data',
     },
     ebay_finances_get_order_earnings_summary: {
-      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],
-      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances',
-      description: 'Requires access to seller payout, transaction, and funds data',
+      requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances.earnings.read'],
+      minimumScope: 'https://api.ebay.com/oauth/api_scope/sell.finances.earnings.read',
+      description: 'Requires restricted access to per-order earnings data',
     },
     ebay_finances_get_billing_activities: {
       requiredScopes: ['https://api.ebay.com/oauth/api_scope/sell.finances'],

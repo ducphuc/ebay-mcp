@@ -30,7 +30,7 @@ describe('FinancesApi', () => {
     expect(client.get).toHaveBeenCalledWith(
       '/sell/finances/v1/transaction',
       { filter: 'transactionType:{SALE}', sort: 'transactionDate', limit: '50', offset: '10' },
-      { baseURL: 'https://api.ebay.com' },
+      { baseURL: 'https://apiz.ebay.com' },
     );
   });
 
@@ -40,7 +40,7 @@ describe('FinancesApi', () => {
     await Effect.runPromise(api.getTransactions());
 
     expect(client.get).toHaveBeenCalledWith('/sell/finances/v1/transaction', undefined, {
-      baseURL: 'https://api.ebay.com',
+      baseURL: 'https://apiz.ebay.com',
     });
   });
 
@@ -52,7 +52,7 @@ describe('FinancesApi', () => {
     expect(client.get).toHaveBeenCalledWith(
       '/sell/finances/v1/transaction_summary',
       { filter: 'transactionStatus:{PAYOUT}' },
-      { baseURL: 'https://api.ebay.com' },
+      { baseURL: 'https://apiz.ebay.com' },
     );
   });
 
@@ -71,7 +71,7 @@ describe('FinancesApi', () => {
     expect(client.get).toHaveBeenCalledWith(
       '/sell/finances/v1/payout',
       { filter: 'payoutStatus:{SUCCEEDED}', sort: 'payoutDate', limit: '20', offset: '0' },
-      { baseURL: 'https://api.ebay.com' },
+      { baseURL: 'https://apiz.ebay.com' },
     );
   });
 
@@ -81,7 +81,7 @@ describe('FinancesApi', () => {
     await Effect.runPromise(api.getPayout({ payoutId: 'PAYOUT/1' }));
 
     expect(client.get).toHaveBeenCalledWith('/sell/finances/v1/payout/PAYOUT%2F1', undefined, {
-      baseURL: 'https://api.ebay.com',
+      baseURL: 'https://apiz.ebay.com',
     });
   });
 
@@ -93,7 +93,7 @@ describe('FinancesApi', () => {
     expect(client.get).toHaveBeenCalledWith(
       '/sell/finances/v1/payout_summary',
       { filter: 'payoutStatus:{SUCCEEDED}' },
-      { baseURL: 'https://api.ebay.com' },
+      { baseURL: 'https://apiz.ebay.com' },
     );
   });
 
@@ -103,7 +103,7 @@ describe('FinancesApi', () => {
     await Effect.runPromise(api.getSellerFundsSummary());
 
     expect(client.get).toHaveBeenCalledWith('/sell/finances/v1/seller_funds_summary', undefined, {
-      baseURL: 'https://api.ebay.com',
+      baseURL: 'https://apiz.ebay.com',
     });
   });
 
@@ -113,7 +113,7 @@ describe('FinancesApi', () => {
     await Effect.runPromise(api.getTransfer({ transferId: 'TRANSFER/9' }));
 
     expect(client.get).toHaveBeenCalledWith('/sell/finances/v1/transfer/TRANSFER%2F9', undefined, {
-      baseURL: 'https://api.ebay.com',
+      baseURL: 'https://apiz.ebay.com',
     });
   });
 
@@ -137,7 +137,7 @@ describe('FinancesApi', () => {
         limit: '25',
         offset: '5',
       },
-      { baseURL: 'https://api.ebay.com' },
+      { baseURL: 'https://apiz.ebay.com' },
     );
   });
 
@@ -149,7 +149,7 @@ describe('FinancesApi', () => {
     expect(client.get).toHaveBeenCalledWith(
       '/sell/finances/v1/order_earnings/12-34567%2F89012',
       undefined,
-      { baseURL: 'https://api.ebay.com' },
+      { baseURL: 'https://apiz.ebay.com' },
     );
   });
 
@@ -165,7 +165,7 @@ describe('FinancesApi', () => {
     expect(client.get).toHaveBeenCalledWith(
       '/sell/finances/v1/order_earnings_summary',
       { filter: 'orderCreationDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]' },
-      { baseURL: 'https://api.ebay.com' },
+      { baseURL: 'https://apiz.ebay.com' },
     );
   });
 
@@ -212,7 +212,7 @@ describe('FinancesApi', () => {
     await Effect.runPromise(api.getTransactions());
 
     expect(client.get).toHaveBeenCalledWith('/sell/finances/v1/transaction', undefined, {
-      baseURL: 'https://api.sandbox.ebay.com',
+      baseURL: 'https://apiz.sandbox.ebay.com',
     });
   });
 

@@ -18,6 +18,9 @@ import { Effect } from 'effect';
 const financesScopeRequirement =
   'Required OAuth Scope: sell.finances\nMinimum Scope: https://api.ebay.com/oauth/api_scope/sell.finances';
 
+const orderEarningsScopeRequirement =
+  'Required OAuth Scope: sell.finances.earnings.read (restricted; request access through an eBay application growth check)\nMinimum Scope: https://api.ebay.com/oauth/api_scope/sell.finances.earnings.read';
+
 const readOnlyAnnotations = {
   readOnlyHint: true,
   destructiveHint: false,
@@ -36,7 +39,7 @@ export const financesEntries: ToolEntry[] = [
   }),
   defineTool({
     name: 'ebay_finances_get_transaction_summary',
-    description: `Retrieve counts and amounts of the seller's monetary transactions matching an optional filter.\n\n${financesScopeRequirement}`,
+    description: `Retrieve counts and amounts of the seller's monetary transactions. The filter must include transactionStatus; additional criteria can be comma-separated in the same filter expression.\n\n${financesScopeRequirement}`,
     inputSchema: getTransactionSummaryInputSchema.shape,
     annotations: readOnlyAnnotations,
     handler: (api, args) => Effect.runPromise(api.finances.getTransactionSummary(args)),
@@ -78,21 +81,21 @@ export const financesEntries: ToolEntry[] = [
   }),
   defineTool({
     name: 'ebay_finances_get_order_earnings',
-    description: `Retrieve per-order earnings breakdowns (net earnings, fees, taxes) for the seller's orders, with an optional orderCreationDate filter, sort, and pagination.\n\n${financesScopeRequirement}`,
+    description: `Retrieve per-order earnings breakdowns (net earnings, fees, taxes) for the seller's orders, with an optional orderCreationDate filter, sort, and pagination.\n\n${orderEarningsScopeRequirement}`,
     inputSchema: getOrderEarningsInputSchema.shape,
     annotations: readOnlyAnnotations,
     handler: (api, args) => Effect.runPromise(api.finances.getOrderEarnings(args)),
   }),
   defineTool({
     name: 'ebay_finances_get_order_earnings_by_id',
-    description: `Retrieve the earnings breakdown for a single order by order ID.\n\n${financesScopeRequirement}`,
+    description: `Retrieve the earnings breakdown for a single order by order ID.\n\n${orderEarningsScopeRequirement}`,
     inputSchema: getOrderEarningsByIdInputSchema.shape,
     annotations: readOnlyAnnotations,
     handler: (api, args) => Effect.runPromise(api.finances.getOrderEarningsById(args)),
   }),
   defineTool({
     name: 'ebay_finances_get_order_earnings_summary',
-    description: `Retrieve aggregate earnings totals across the seller's orders matching an optional orderCreationDate filter.\n\n${financesScopeRequirement}`,
+    description: `Retrieve aggregate earnings totals across the seller's orders matching an optional orderCreationDate filter.\n\n${orderEarningsScopeRequirement}`,
     inputSchema: getOrderEarningsSummaryInputSchema.shape,
     annotations: readOnlyAnnotations,
     handler: (api, args) => Effect.runPromise(api.finances.getOrderEarningsSummary(args)),

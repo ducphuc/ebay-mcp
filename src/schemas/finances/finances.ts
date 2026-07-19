@@ -37,7 +37,12 @@ export const getTransactionsInputSchema = z.object({
 
 /** Tool input schema for ebay_finances_get_transaction_summary (getTransactionSummary). */
 export const getTransactionSummaryInputSchema = z.object({
-  filter: filterSchema,
+  filter: z
+    .string()
+    .optional()
+    .describe(
+      'Required by eBay and must include transactionStatus, e.g. "transactionStatus:{PAYOUT},transactionDate:[2026-01-01T00:00:01.000Z..2026-01-31T00:00:01.000Z]"',
+    ),
 });
 
 /** Tool input schema for ebay_finances_get_payouts (getPayouts). */

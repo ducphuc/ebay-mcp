@@ -10,7 +10,7 @@ import {
   requireStringEffect,
 } from '@/api/shared/request.js';
 import type { EbayEnvironment } from '@/config/environment.js';
-import { getFinancesBaseUrl } from '@/config/environment.js';
+import { getBaseUrl, getFinancesBaseUrl } from '@/config/environment.js';
 import type {
   getBillingActivitiesInputSchema,
   getOrderEarningsByIdInputSchema,
@@ -140,6 +140,7 @@ export type BillingActivityResponse = components['schemas']['BillingActivityResp
 export class FinancesApi {
   private readonly basePath = '/sell/finances/v1';
   private readonly financesBaseUrl: string;
+  private readonly billingBaseUrl: string;
 
   /**
    * @param client - eBay REST client that owns auth and transport details.
@@ -153,6 +154,7 @@ export class FinancesApi {
     apiBaseUrl?: string,
   ) {
     this.financesBaseUrl = getFinancesBaseUrl(environment, apiBaseUrl);
+    this.billingBaseUrl = getBaseUrl(environment, apiBaseUrl);
   }
 
   /**
@@ -479,7 +481,7 @@ export class FinancesApi {
         offset: { wireName: 'offset', value: offset === undefined ? undefined : String(offset) },
       });
       return yield* requestGetEffect<BillingActivityResponse>(this.client, path, params, {
-        baseURL: this.financesBaseUrl,
+        baseURL: this.billingBaseUrl,
       });
     });
 }
