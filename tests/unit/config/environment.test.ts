@@ -16,8 +16,14 @@ describe('Environment Configuration', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    // Create a fresh copy of process.env for each test
+    // Create a fresh copy of process.env for each test, excluding eBay values
+    // loaded from the developer's shell or repository .env file.
     process.env = { ...originalEnv };
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith('EBAY_')) {
+        delete process.env[key];
+      }
+    }
   });
 
   afterEach(() => {
